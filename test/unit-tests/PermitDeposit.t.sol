@@ -2,9 +2,10 @@
 pragma solidity ^0.8.18;
 
 import {UnitTestBase} from "./Base.t.sol";
-import {ICirculator} from "../../src/interfaces/ICirculator.sol";
+import {ICirculator} from "src/interfaces/ICirculator.sol";
 
 import {MessageHashUtils} from "openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol";
+import {Pausable} from "@openzeppelin/utils/Pausable.sol";
 
 contract PermitDepositTest is UnitTestBase {
     // common variables
@@ -32,6 +33,23 @@ contract PermitDepositTest is UnitTestBase {
         // Assert
         uint256 aliceBalanceAfter = usdc.balanceOf(alice);
         assertEq(aliceBalanceAfter, aliceBalanceBefore - amount);
+    }
+
+    function test_RevertWhen_Paused() public {
+        // Arrange
+        bytes32 empty = bytes32(0);
+        // Use empty data as signatures
+        ICirculator.PermitData memory permitData = ICirculator.PermitData(alice, deadline, amount, 0, empty, empty);
+        ICirculator.DelegateData memory delegateData =
+            ICirculator.DelegateData(chainADomain, _toBytes32(bob), 0, empty, empty);
+
+        // Act & Assert
+        vm.prank(owner);
+        circulator.pause();
+
+        vm.prank(delegator);
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        circulator.permitDeposit(permitData, delegateData);
     }
 
     function test_RevertWhen_DelegateDataChanged() public {

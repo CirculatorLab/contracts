@@ -4,7 +4,7 @@ pragma solidity ^0.8.18;
 import {UnitTestBase} from "./Base.t.sol";
 import {Circulator} from "../../src/Circulator.sol";
 
-contract DepositTest is UnitTestBase {
+contract DeploymentTest is UnitTestBase {
     function test_DeploymentSetup() public {
         // Arrange
         address[] memory delegators = new address[](1);
