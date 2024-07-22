@@ -36,6 +36,21 @@ contract FeeTest is UnitTestBase {
         assertEq(circulator.serviceFeeBPS(), newFee);
     }
 
+    function test_CollectFee() public {
+        // Arrange
+        uint256 aliceBalanceBefore = usdc.balanceOf(alice);
+        uint256 fee = 50e6;
+        usdc.mint(address(circulator), fee);
+
+        // Act
+        vm.prank(feeRecipient);
+        circulator.collectFee(address(usdc), alice);
+
+        // Assert
+        uint256 aliceBalanceAfter = usdc.balanceOf(alice);
+        assertEq(aliceBalanceAfter, aliceBalanceBefore + fee);
+    }
+
     function test_setFeeCollector() public {
         // Arrange
         address newFeeCollector = address(alice);
