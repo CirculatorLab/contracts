@@ -44,7 +44,7 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
     ///@dev Mapping of destination domain to relayer fee.
     mapping(uint32 destinationDomain => uint256 fee) public relayerFeeMaps;
 
-    ///@dev Mapping of destination domain to base fee.
+    ///@dev Mapping of destination domain to base fee. (minimum fee to destination chain per transaction)
     mapping(uint32 destinationDomain => uint256 fee) public baseFeeMaps;
 
     ///@dev Mapping of authorized delegators
