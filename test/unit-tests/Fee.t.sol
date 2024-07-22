@@ -2,6 +2,7 @@
 pragma solidity ^0.8.18;
 
 import {UnitTestBase} from "./Base.t.sol";
+import {FeeOperator} from "src/FeeOperator.sol";
 
 contract FeeTest is UnitTestBase {
     function test_ServiceFeeHigherOnChainA() public view {
@@ -37,6 +38,13 @@ contract FeeTest is UnitTestBase {
 
         // Assert
         assertEq(circulator.feeCollector(), newFeeCollector);
+    }
+
+    function test_RevertWhen_setEmptyFeeCollector() public {
+        // Act
+        vm.prank(owner);
+        vm.expectRevert(FeeOperator.InvalidFeeCollector.selector);
+        circulator.setFeeCollector(address(0));
     }
 
     function test_setDelegateFee() public {

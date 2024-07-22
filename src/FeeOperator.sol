@@ -10,6 +10,8 @@ abstract contract FeeOperator is Ownable {
 
     address public feeCollector;
 
+    error InvalidFeeCollector();
+
     event FeeCollectorUpdated(address from, address to);
 
     modifier onlyFeeCollector() {
@@ -32,6 +34,7 @@ abstract contract FeeOperator is Ownable {
     }
 
     function setFeeCollector(address _feeCollector) external onlyOwner {
+        if (_feeCollector == address(0)) revert InvalidFeeCollector();
         address oldFeeCollector = feeCollector;
         feeCollector = _feeCollector;
         emit FeeCollectorUpdated(oldFeeCollector, _feeCollector);
