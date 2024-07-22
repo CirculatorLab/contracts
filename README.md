@@ -8,9 +8,9 @@
   <!-- <a href=https://github.com/CirculatorLab/contracts/actions/workflows/Slither.yml""><img src="https://github.com/antoncoding/grappa/actions/workflows/Slither.yml/badge.svg?branch=master" > </a> -->
   <a href=https://github.com/CirculatorLab/contracts/actions/workflows/CI.yml""><img src="https://github.com/CirculatorLab/contracts/actions/workflows/CI.yml/badge.svg?branch=master"> </a>
 
-  <!-- <a href="https://codecov.io/gh/CirculatorLab/contracts" >
-<img src="https://codecov.io/gh/CirculatorLab/contracts/branch/master/graph/badge.svg?token=G52EOD1X5B"/>
-</a> -->
+  <a href="https://codecov.io/gh/CirculatorLab/contracts" >
+<img src="https://codecov.io/gh/CirculatorLab/contracts/branch/main/graph/badge.svg?token=YA9M02PUP6"/>
+</a>
   <h5 align="center"> Teleport USDC everywhere.</h5>
   
 </div>
