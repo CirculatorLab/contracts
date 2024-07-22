@@ -79,7 +79,7 @@ interface ICirculator {
     /// @notice Emitted when the base fee for a destination is updated.
     /// @param destinationDomain Destination domain ID.
     /// @param fee New base fee.
-    event DestinationBaseFeeUpdated(uint32 indexed destinationDomain, uint256 fee);
+    event DestinationMinFeeUpdated(uint32 indexed destinationDomain, uint256 fee);
 
     /// @notice Emitted when the delegate fee is updated.
     /// @param fee New delegate fee.
@@ -102,9 +102,7 @@ interface ICirculator {
      * @param _destinationDomain The ID of the destination domain.
      * @return _nonce A unique identifier for this deposit.
      */
-    function deposit(uint256 _amount, bytes32 _recipient, uint32 _destinationDomain)
-        external
-        returns (uint64 _nonce);
+    function deposit(uint256 _amount, bytes32 _recipient, uint32 _destinationDomain) external returns (uint64 _nonce);
 
     /**
      * @notice Deposits on behalf of a user using a permit and DelegateData signature.

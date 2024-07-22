@@ -42,10 +42,10 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
     uint256 public serviceFeeBPS;
 
     ///@dev Mapping of destination domain to relayer fee.
-    mapping(uint32 destinationDomain => uint256 fee) public relayerFeeMaps;
+    mapping(uint32 destinationDomain => uint256 fee) public relayerFee;
 
     ///@dev Mapping of destination domain to base fee. (minimum fee to destination chain per transaction)
-    mapping(uint32 destinationDomain => uint256 fee) public baseFeeMaps;
+    mapping(uint32 destinationDomain => uint256 fee) public minFee;
 
     ///@dev Mapping of authorized delegators
     mapping(address delegator => bool) public delegators;
@@ -60,8 +60,8 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
      * @param _delegateFee Fixed fee for the source chain.
      * @param _serviceFeeBPS Percentage of the service fee (for the source chain).
      * @param _domainIds List of domain IDs.
-     * @param _relayerFeeMaps List of relayer fees corresponding to each domain ID.
-     * @param _baseFeeMaps List of base fees corresponding to each domain ID.
+     * @param _relayerFees List of relayer fees corresponding to each domain ID.
+     * @param _minFees List of base fees corresponding to each domain ID.
      */
     constructor(
         address _circleAsset,
@@ -73,8 +73,8 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
         uint256 _delegateFee,
         uint256 _serviceFeeBPS,
         uint32[] memory _domainIds,
-        uint256[] memory _relayerFeeMaps,
-        uint256[] memory _baseFeeMaps
+        uint256[] memory _relayerFees,
+        uint256[] memory _minFees
     ) FeeOperator(_initialOwner, _feeCollector) EIP712("Circulator", "v1") {
         circleAsset = _circleAsset;
 
@@ -89,8 +89,8 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
         }
         // Set base fee and relayer fees
         for (uint256 i = 0; i < _domainIds.length; i++) {
-            relayerFeeMaps[_domainIds[i]] = _relayerFeeMaps[i];
-            baseFeeMaps[_domainIds[i]] = _baseFeeMaps[i];
+            relayerFee[_domainIds[i]] = _relayerFees[i];
+            minFee[_domainIds[i]] = _minFees[i];
         }
         // Source chain fixed fee
         delegateFee = _delegateFee;
@@ -209,8 +209,8 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
      * @return _finalFee The total fee denominated in circleAsset
      */
     function totalFee(uint256 _amount, uint32 _destinationDomain) public view returns (uint256 _finalFee) {
-        uint256 _txFee = getServiceFee(_amount) + relayerFeeMaps[_destinationDomain];
-        _finalFee = _max(_txFee, baseFeeMaps[_destinationDomain]);
+        uint256 _txFee = getServiceFee(_amount) + relayerFee[_destinationDomain];
+        _finalFee = _max(_txFee, minFee[_destinationDomain]);
     }
 
     /**
@@ -231,7 +231,7 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
      * @param _fee The new relayer fee to be set.
      */
     function setDestinationRelayerFee(uint32 _destinationDomain, uint256 _fee) external onlyOwner {
-        relayerFeeMaps[_destinationDomain] = _fee;
+        relayerFee[_destinationDomain] = _fee;
         emit DestinationRelayerFeeUpdated(_destinationDomain, _fee);
     }
 
@@ -241,9 +241,9 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
      * @param _destinationDomain The domain ID for which the base fee is set.
      * @param _fee The new base fee to be set.
      */
-    function setDestinationBaseFee(uint32 _destinationDomain, uint256 _fee) external onlyOwner {
-        baseFeeMaps[_destinationDomain] = _fee;
-        emit DestinationBaseFeeUpdated(_destinationDomain, _fee);
+    function setDestinationMinFee(uint32 _destinationDomain, uint256 _fee) external onlyOwner {
+        minFee[_destinationDomain] = _fee;
+        emit DestinationMinFeeUpdated(_destinationDomain, _fee);
     }
 
     /**

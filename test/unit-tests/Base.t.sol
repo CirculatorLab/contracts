@@ -39,7 +39,7 @@ contract UnitTestBase is Test {
 
     uint32[] domainIds = [chainADomain, chainBDomain];
     uint256[] relayerFeeMaps = [uint256(1e6), uint256(0.1e6)];
-    uint256[] baseFeeMaps = [uint256(1e6), uint256(0.1e6)];
+    uint256[] minFeeMaps = [uint256(1e6), uint256(0.1e6)];
 
     function setUp() public {
         usdc = new MockPermitERC20("USDC", "USDC");
@@ -61,7 +61,7 @@ contract UnitTestBase is Test {
             serviceFeeBPS,
             domainIds,
             relayerFeeMaps,
-            baseFeeMaps
+            minFeeMaps
         );
 
         _setupMintLimit();

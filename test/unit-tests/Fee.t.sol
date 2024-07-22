@@ -12,30 +12,6 @@ contract FeeTest is UnitTestBase {
         assertGt(circulator.totalFee(amount, chainADomain), circulator.totalFee(amount, chainBDomain));
     }
 
-    function test_setDelegateFee() public {
-        // Arrange
-        uint256 newFee = 0.2e6;
-
-        // Act
-        vm.prank(owner);
-        circulator.setDelegateFee(newFee);
-
-        // Assert
-        assertEq(circulator.delegateFee(), newFee);
-    }
-
-    function test_setServiceFee() public {
-        // Arrange
-        uint256 newFee = 20;
-
-        // Act
-        vm.prank(owner);
-        circulator.setServiceFee(newFee);
-
-        // Assert
-        assertEq(circulator.serviceFeeBPS(), newFee);
-    }
-
     function test_CollectFee() public {
         // Arrange
         uint256 aliceBalanceBefore = usdc.balanceOf(alice);
@@ -61,5 +37,53 @@ contract FeeTest is UnitTestBase {
 
         // Assert
         assertEq(circulator.feeCollector(), newFeeCollector);
+    }
+
+    function test_setDelegateFee() public {
+        // Arrange
+        uint256 newFee = 0.2e6;
+
+        // Act
+        vm.prank(owner);
+        circulator.setDelegateFee(newFee);
+
+        // Assert
+        assertEq(circulator.delegateFee(), newFee);
+    }
+
+    function test_setServiceFee() public {
+        // Arrange
+        uint256 newFee = 20;
+
+        // Act
+        vm.prank(owner);
+        circulator.setServiceFee(newFee);
+
+        // Assert
+        assertEq(circulator.serviceFeeBPS(), newFee);
+    }
+
+    function test_setRelayFee() public {
+        // Arrange
+        uint256 newFee = 0.2e6;
+
+        // Act
+        vm.prank(owner);
+        circulator.setDestinationRelayerFee(chainADomain, newFee);
+
+        // Assert
+        assertEq(circulator.relayerFee(chainADomain), newFee);
+    }
+
+    function test_setMinFee() public {
+        // Arrange
+        uint256 newFee = 0.25e6;
+
+        // Act
+        vm.prank(owner);
+        circulator.setDestinationMinFee(chainADomain, newFee);
+
+        // Assert
+        assertEq(circulator.minFee(chainADomain), newFee);
     }
 }

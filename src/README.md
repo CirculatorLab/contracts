@@ -27,5 +27,5 @@ DEPLOY_CHAIN=BaseSepolia forge script script/D01SetDelegator.s.sol --broadcast -
 
 ```shell
 # Set Base Fee Map
-cast send <CIRCULATOR_ADDRESS> "setDestinationBaseFee(uint32,uint256)" <CHAIN_ID> <BASE_FEE> --private-key $PRIVATE_KEY --rpc-url <CHAIN_ALIAS>
+cast send <CIRCULATOR_ADDRESS> "setDestinationMinFee(uint32,uint256)" <CHAIN_ID> <BASE_FEE> --private-key $PRIVATE_KEY --rpc-url <CHAIN_ALIAS>
 ```
