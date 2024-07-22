@@ -3,6 +3,7 @@ pragma solidity ^0.8.18;
 
 import {UnitTestBase} from "./Base.t.sol";
 import {ICirculator} from "../../src/interfaces/ICirculator.sol";
+import {Pausable} from "@openzeppelin/utils/Pausable.sol";
 
 contract DepositTest is UnitTestBase {
     function test_Deposit() public {
@@ -33,6 +34,19 @@ contract DepositTest is UnitTestBase {
         vm.startPrank(alice);
         usdc.approve(address(circulator), amount);
         vm.expectRevert(ICirculator.FeeNotCovered.selector);
+        circulator.deposit(amount, _toBytes32(alice), chainADomain);
+        vm.stopPrank();
+    }
+
+    function test_RevertWhen_Paused() public {
+        // Arrange
+        uint256 amount = 1000e6;
+
+        // Act & Asset
+        vm.prank(owner);
+        circulator.pause();
+
+        vm.expectRevert(Pausable.EnforcedPause.selector);
         circulator.deposit(amount, _toBytes32(alice), chainADomain);
         vm.stopPrank();
     }
