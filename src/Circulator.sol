@@ -1,18 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {Pausable} from "@openzeppelin/utils/Pausable.sol";
-import {SafeERC20} from "@openzeppelin/token/ERC20/utils/SafeERC20.sol";
+// Interfaces
 import {IERC20Permit} from "@openzeppelin/token/ERC20/extensions/IERC20Permit.sol";
 import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
-import {EIP712} from "@openzeppelin/utils/cryptography/EIP712.sol";
-import {ECDSA} from "@openzeppelin/utils/cryptography/ECDSA.sol";
-import {Nonces} from "@openzeppelin/utils/Nonces.sol";
-
 import {ITokenMessenger} from "./interfaces/ITokenMessenger.sol";
 import {ITokenMinter} from "./interfaces/ITokenMinter.sol";
 import {ICirculator} from "./interfaces/ICirculator.sol";
+
+// Inherited contracts
+import {Pausable} from "@openzeppelin/utils/Pausable.sol";
+import {Nonces} from "@openzeppelin/utils/Nonces.sol";
+import {EIP712} from "@openzeppelin/utils/cryptography/EIP712.sol";
+import {ECDSA} from "@openzeppelin/utils/cryptography/ECDSA.sol";
+
 import {FeeOperator} from "./FeeOperator.sol";
+
+// Libraries
+import {SafeERC20} from "@openzeppelin/token/ERC20/utils/SafeERC20.sol";
 
 /// @author CirculatorLabs
 contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
@@ -258,6 +263,7 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
      */
     function setServiceFee(uint256 _newFeeBPS) external onlyOwner {
         serviceFeeBPS = _newFeeBPS;
+        emit ServiceFeeUpdated(_newFeeBPS);
     }
 
     /**
@@ -269,7 +275,7 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
     function setDelegators(address[] memory _delegators, bool _status) external onlyOwner {
         for (uint256 i = 0; i < _delegators.length; i++) {
             delegators[_delegators[i]] = _status;
-            emit DelegatorUpdated(_delegators[i]);
+            emit DelegatorUpdated(_delegators[i], _status);
         }
     }
 
@@ -302,10 +308,4 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
     function DOMAIN_SEPARATOR() external view virtual returns (bytes32) {
         return _domainSeparatorV4();
     }
-
-    /**
-     * @notice Fallback function to receive Ether.
-     * @dev This function allows the contract to receive Ether. It is intentionally left empty.
-     */
-    receive() external payable {}
 }

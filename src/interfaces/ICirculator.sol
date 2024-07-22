@@ -85,7 +85,12 @@ interface ICirculator {
     /// @param fee New delegate fee.
     event DelegateFeeUpdated(uint256 fee);
 
+    /// @notice Emitted when service fee is updated.
+    /// @param feeBPS New service fee in BPS.
+    event ServiceFeeUpdated(uint256 feeBPS);
+
     /// @notice Emitted when a delegator's status is updated.
     /// @param delegator Address of the delegator.
-    event DelegatorUpdated(address indexed delegator);
+    /// @param status Enabled as delegator or disabled.
+    event DelegatorUpdated(address indexed delegator, bool status);
 }

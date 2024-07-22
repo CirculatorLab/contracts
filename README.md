@@ -5,7 +5,7 @@
   <br/>
   <br/>
   <a href="https://github.com/foundry-rs/foundry"><img src="https://img.shields.io/static/v1?label=foundry-rs&message=foundry&color=blue&logo=github"/></a>
-  <!-- <a href=https://github.com/CirculatorLab/contracts/actions/workflows/Slither.yml""><img src="https://github.com/antoncoding/grappa/actions/workflows/Slither.yml/badge.svg?branch=master" > </a> -->
+  <a href=https://github.com/CirculatorLab/contracts/actions/workflows/Slither.yml""><img src="https://github.com/CirculatorLab/contracts/actions/workflows/Slither.yml/badge.svg?branch=main" > </a>
   <a href=https://github.com/CirculatorLab/contracts/actions/workflows/CI.yml""><img src="https://github.com/CirculatorLab/contracts/actions/workflows/CI.yml/badge.svg?branch=main"> </a>
 
   <a href="https://codecov.io/gh/CirculatorLab/contracts" >
