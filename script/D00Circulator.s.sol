@@ -6,7 +6,7 @@ import "../src/Circulator.sol";
 import "./utils/DeployHelper.sol";
 
 contract Deploy is Script, DeployHelper {
-    mapping(string => address) circulator;
+    mapping(uint256 chainId => address) circulator;
 
     function run() public {
         vm.startBroadcast();
@@ -23,15 +23,15 @@ contract Deploy is Script, DeployHelper {
             "Deploying Circulator with deployer address: ", msg.sender, "and balance: ", address(msg.sender).balance
         );
         // Deploy Circulator
-        string memory currentChain = vm.envString("DEPLOY_CHAIN");
-        console2.log("Deploying Circulator for chain: ", currentChain);
+        uint256 chainId = block.chainid;
+        console2.log("Deploying Circulator on chain: ", chainId);
 
         address[] memory delegators = new address[](1);
         delegators[0] = msg.sender;
 
-        DeployConfig memory config = getConfig(currentChain, msg.sender, msg.sender, delegators);
+        DeployConfig memory config = getConfig(chainId, msg.sender, msg.sender, delegators);
 
-        circulator[currentChain] = address(
+        circulator[chainId] = address(
             new Circulator(
                 config.usdc,
                 config.tokenMessenger,

@@ -20,11 +20,8 @@ contract SetDelegator is Script, SettingHelper {
 
     function deploy() public {
         console2.log("Set Delegators with owner address: ", msg.sender, "and balance: ", address(msg.sender).balance);
-        // Deploy Circulator
-        string memory currentChain = vm.envString("DEPLOY_CHAIN");
-        console2.log("Set Delegators chain: ", currentChain);
 
-        SystemConfig memory config = getConfig(currentChain);
+        SystemConfig memory config = getConfig(block.chainid);
 
         address[] memory delegators = new address[](2);
         delegators[0] = 0x39329eEa71745B8AD98c51d4287A280e141D9bC6;
