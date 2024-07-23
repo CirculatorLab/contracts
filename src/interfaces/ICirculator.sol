@@ -13,13 +13,19 @@ interface ICirculator {
     /// @dev Revert when the caller is not a delegator.
     error NotDelegator();
 
-    /// @dev Revert when actual amount being bridged is less than minimum amount.
+    /// @dev Revert when actual amount being teleported is less than minimum amount.
     error AmountLessThanMinimum();
 
     /// @dev Revert when signature is invalid.
     error InvalidDelegateSignature();
 
-    /// @dev Struct for encapsulating data needed for deposit with permit.
+    /// @dev Struct for encapsulating data needed for circleAsset permit.
+    /// @param sender Address of the sender.
+    /// @param deadline Deadline for the permit.
+    /// @param amount Amount to be circulated, including fee.
+    /// @param v Signature v.
+    /// @param r Signature r.
+    /// @param s Signature s.
     struct PermitData {
         address sender;
         uint256 deadline;
@@ -29,6 +35,12 @@ interface ICirculator {
         bytes32 s;
     }
 
+    /// @dev Struct for encapsulating data needed for delegate circulate
+    /// @param destinationDomain Destination domain ID.
+    /// @param recipient Address of the recipient.
+    /// @param v Signature v.
+    /// @param r Signature r.
+    /// @param s Signature s.
     struct DelegateData {
         uint32 destinationDomain;
         bytes32 recipient;
@@ -37,38 +49,22 @@ interface ICirculator {
         bytes32 s;
     }
 
-    /// @notice Emitted when a deposit is made.
+    /// @notice Emitted when a someone teleport tokens to another domain using permit.
+    /// @param delegator Address of the relayer.
     /// @param sender Address of the sender.
     /// @param receiver Address of the receiver.
     /// @param destinationDomain Destination domain ID.
-    /// @param amount Amount deposited.
-    /// @param fee Fee taken for this deposit.
-    /// @param nonce Unique nonce for this deposit.
-    event Deposited(
+    /// @param amount Amount circulated
+    /// @param fee Fee paid
+    /// @param nonce Unique nonce for this token burn
+    event Circulate(
         address indexed sender,
         bytes32 indexed receiver,
         uint32 indexed destinationDomain,
         uint256 amount,
         uint256 fee,
-        uint64 nonce
-    );
-
-    /// @notice Emitted when a deposit is made with a permit.
-    /// @param relayer Address of the relayer.
-    /// @param sender Address of the sender.
-    /// @param receiver Address of the receiver.
-    /// @param destinationDomain Destination domain ID.
-    /// @param amount Amount deposited.
-    /// @param fee Fee taken for this deposit with permit.
-    /// @param nonce Unique nonce for this burn
-    event PermitDeposited(
-        address indexed relayer,
-        address indexed sender,
-        bytes32 receiver,
-        uint32 indexed destinationDomain,
-        uint256 amount,
-        uint256 fee,
-        uint64 nonce
+        uint64 nonce,
+        address delegator
     );
 
     /// @notice Emitted when the relayer fee for a destination is updated.
@@ -95,22 +91,26 @@ interface ICirculator {
     event DelegatorUpdated(address indexed delegator, bool status);
 
     /**
-     * @notice Deposits a specified amount to the bridge and emits a `Deposited` event.
+     * @notice Circulate a specified amount to destination chain and emits a `Circulate` event.
      * @dev This function burns a token amount for the given recipient and destination domain.
-     * @param _amount Amount to be deposited.
+     * @param _amount Amount to be circulated
      * @param _recipient The address of the recipient in bytes32 format.
      * @param _destinationDomain The ID of the destination domain.
-     * @return _nonce A unique identifier for this deposit.
+     * @return _nonce Burn nonce for the teleport.
      */
-    function deposit(uint256 _amount, bytes32 _recipient, uint32 _destinationDomain) external returns (uint64 _nonce);
+    function circulate(uint256 _amount, bytes32 _recipient, uint32 _destinationDomain)
+        external
+        returns (uint64 _nonce);
 
     /**
-     * @notice Deposits on behalf of a user using a permit and DelegateData signature.
-     * @dev Only a registered delegator can call this function to deposit on behalf of a user.
+     * @notice Teleport on behalf of a user with signatures.
+     * @dev In the current version, only whitelisted delegator can call this function to circulate on behalf of other users.
      * @param permitData Data needed for the permit.
      * @param delegateData Data needed for the delegate.
      */
-    function permitDeposit(PermitData calldata permitData, DelegateData calldata delegateData) external;
+    function delegateCirculate(PermitData calldata permitData, DelegateData calldata delegateData)
+        external
+        returns (uint64 _nonce);
 
     /**
      * @notice Calculates the total fee for a given amount and destination domain.
@@ -132,7 +132,7 @@ interface ICirculator {
     function getServiceFee(uint256 _amount) external view returns (uint256 _fee);
 
     /**
-     * @notice Get the delegate fee in circleAsset when using permitDeposit.
+     * @notice Get the delegate fee in circleAsset when using delegateCirculate.
      * @return _fee Delegator fee denominated in circleAsset
      */
     function delegateFee() external view returns (uint256 _fee);

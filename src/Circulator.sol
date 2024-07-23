@@ -23,16 +23,16 @@ import {SafeERC20} from "@openzeppelin/token/ERC20/utils/SafeERC20.sol";
 contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
     using SafeERC20 for IERC20;
 
-    bytes32 public constant DELEGATE_DEPOSIT_TYPEHASH =
-        keccak256("DelegateDeposit(uint32 destinationDomain,bytes32 recipient,uint256 nonce)");
+    bytes32 public constant DELEGATE_CIRCULATE_TYPEHASH =
+        keccak256("DelegateCirculate(uint32 destinationDomain,bytes32 recipient,uint256 nonce)");
 
     ///@dev asset to be circulated.
     address public immutable circleAsset;
 
-    ///@dev Reference to the Circle Bridge contract/interface.
+    ///@dev Circle TokenMessenger contract.
     ITokenMessenger public immutable tokenMessenger;
 
-    ///@dev Reference to the local minter interface.
+    ///@dev Circle TokenMinter contract.
     ITokenMinter public immutable localMinter;
 
     ///@dev Fee for delegators. denominated in circleAsset
@@ -51,10 +51,8 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
     mapping(address delegator => bool) public delegators;
 
     /**
-     * @notice Initializes the contract with provided parameters.
-     * @dev Constructor to set up initial configurations of the bridge contract.
      * @param _tokenMessenger Address of the tokenMessenger contract.
-     * @param _localMinter Address of the local minter contract.
+     * @param _localMinter Address of the tokenMinter contract.
      * @param _feeCollector Address of the fee collector.
      * @param _delegators List of initial delegator addresses to be set.
      * @param _delegateFee Fixed fee for the source chain.
@@ -80,7 +78,7 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
 
         tokenMessenger = ITokenMessenger(_tokenMessenger);
 
-        IERC20(_circleAsset).approve(_tokenMessenger, type(uint256).max);
+        IERC20(_circleAsset).safeIncreaseAllowance(_tokenMessenger, type(uint256).max);
 
         localMinter = ITokenMinter(_localMinter);
         // Set approved delegators
@@ -110,45 +108,53 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
     }
 
     /**
-     * @notice Deposits a specified amount to the bridge and emits a `Deposited` event.
+     * @notice Teleport a specified amount to the destination domain and emits a `Circulate` event.
      * @dev This function burns a token amount for the given recipient and destination domain.
-     * @param _amount Amount to be deposited.
+     * @param _amount Amount to teleport.
      * @param _recipient The address of the recipient in bytes32 format.
      * @param _destinationDomain The ID of the destination domain.
-     * @return _nonce A unique identifier for this deposit.
+     * @return nonce Burn nonce for the teleport.
      */
-    function deposit(uint256 _amount, bytes32 _recipient, uint32 _destinationDomain)
+    function circulate(uint256 _amount, bytes32 _recipient, uint32 _destinationDomain)
         external
         whenNotPaused
         onlyWithinBurnLimit(_amount)
-        returns (uint64 _nonce)
+        returns (uint64 nonce)
     {
-        // Calculate regular deposit fee
-        uint256 fee = totalFee(_amount, _destinationDomain);
         // Check if fee is covered
+        uint256 fee = totalFee(_amount, _destinationDomain);
         if (fee > _amount) revert FeeNotCovered();
-        // Transfer tokens to be burned to this contract
+
+        uint256 burnAmt = _amount - fee;
+
+        // Burn the token in TokenMessenger
         IERC20(circleAsset).safeTransferFrom(msg.sender, address(this), _amount);
-        // Deposit tokens to the bridge
-        _nonce = tokenMessenger.depositForBurn(_amount - fee, _destinationDomain, _recipient, circleAsset);
+        nonce = tokenMessenger.depositForBurn(burnAmt, _destinationDomain, _recipient, circleAsset);
+
         // Emit an event
-        emit Deposited(msg.sender, _recipient, _destinationDomain, _amount, fee, _nonce);
+        emit Circulate(msg.sender, _recipient, _destinationDomain, burnAmt, fee, nonce, address(0));
     }
 
     /**
-     * @notice Deposits on behalf of a user using a permit (off-chain signature).
-     * @dev Only a registered delegator can call this function to deposit on behalf of a user.
+     * @notice Teleport on behalf of a user with signatures
+     *
+     * @dev This function can only be trusted when circleAsset is set to a valid ERC20 token from Circle, with `permit` functionality.
+     *      If a token doesn't have permit but has a fallback function, this could lead to potential attack.
+     *
+     * @dev In the current version, only whitelisted delegator can call this function to circulate on behalf of other users.
      * @param permitData Data needed for the permit.
      * @param delegateData Data needed for the delegate.
      */
-    function permitDeposit(PermitData calldata permitData, DelegateData calldata delegateData)
+    // slither-disable-next-line arbitrary-send-erc20-permit
+    function delegateCirculate(PermitData calldata permitData, DelegateData calldata delegateData)
         external
         whenNotPaused
         onlyWithinBurnLimit(permitData.amount)
+        returns (uint64 nonce)
     {
         if (!delegators[msg.sender]) revert NotDelegator();
 
-        // Calculate delegate mode deposit fee
+        // Calculate delegate mode fee
         uint256 fee = totalFee(permitData.amount, delegateData.destinationDomain) + delegateFee;
         if (fee > permitData.amount) revert FeeNotCovered();
 
@@ -164,13 +170,12 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
         );
         IERC20(circleAsset).safeTransferFrom(permitData.sender, address(this), permitData.amount);
 
-        // Get amount to be bridged
-        uint256 bridgeAmt = permitData.amount - fee;
+        uint256 burnAmt = permitData.amount - fee;
 
         // Verify the delegate data and signature
         bytes32 structHash = keccak256(
             abi.encode(
-                DELEGATE_DEPOSIT_TYPEHASH,
+                DELEGATE_CIRCULATE_TYPEHASH,
                 delegateData.destinationDomain,
                 delegateData.recipient,
                 _useNonce(permitData.sender)
@@ -182,20 +187,13 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
             revert InvalidDelegateSignature();
         }
 
-        // Bridge the tokens
-        uint64 burnNonce = tokenMessenger.depositForBurn(
-            bridgeAmt, delegateData.destinationDomain, delegateData.recipient, circleAsset
-        );
+        // Burn the token in TokenMessenger
+        nonce =
+            tokenMessenger.depositForBurn(burnAmt, delegateData.destinationDomain, delegateData.recipient, circleAsset);
 
         // Emit an event
-        emit PermitDeposited(
-            msg.sender, // The relayer address
-            permitData.sender, // The user address that signed the permit
-            delegateData.recipient, // The recipient address
-            delegateData.destinationDomain, // The destination domain ID
-            bridgeAmt, // The amount bridged
-            fee, // The fee taken for Circulator
-            burnNonce // The nonce for this deposit
+        emit Circulate(
+            permitData.sender, delegateData.recipient, delegateData.destinationDomain, burnAmt, fee, nonce, msg.sender
         );
     }
 

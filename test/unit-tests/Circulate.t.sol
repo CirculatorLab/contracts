@@ -5,8 +5,8 @@ import {UnitTestBase} from "./Base.t.sol";
 import {ICirculator} from "../../src/interfaces/ICirculator.sol";
 import {Pausable} from "@openzeppelin/utils/Pausable.sol";
 
-contract DepositTest is UnitTestBase {
-    function test_Deposit() public {
+contract CirculateTest is UnitTestBase {
+    function test_Circulate() public {
         // Arrange
         uint256 amount = 1000e6;
         uint256 aliceBalanceBefore = usdc.balanceOf(alice);
@@ -15,7 +15,7 @@ contract DepositTest is UnitTestBase {
         // Act
         vm.startPrank(alice);
         usdc.approve(address(circulator), amount);
-        circulator.deposit(amount, _toBytes32(alice), chainADomain);
+        circulator.circulate(amount, _toBytes32(alice), chainADomain);
         vm.stopPrank();
 
         // Assert
@@ -34,7 +34,7 @@ contract DepositTest is UnitTestBase {
         vm.startPrank(alice);
         usdc.approve(address(circulator), amount);
         vm.expectRevert(ICirculator.FeeNotCovered.selector);
-        circulator.deposit(amount, _toBytes32(alice), chainADomain);
+        circulator.circulate(amount, _toBytes32(alice), chainADomain);
         vm.stopPrank();
     }
 
@@ -47,7 +47,7 @@ contract DepositTest is UnitTestBase {
         circulator.pause();
 
         vm.expectRevert(Pausable.EnforcedPause.selector);
-        circulator.deposit(amount, _toBytes32(alice), chainADomain);
+        circulator.circulate(amount, _toBytes32(alice), chainADomain);
         vm.stopPrank();
     }
 }

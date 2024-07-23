@@ -7,7 +7,7 @@ import {ICirculator} from "src/interfaces/ICirculator.sol";
 import {MessageHashUtils} from "openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol";
 import {Pausable} from "@openzeppelin/utils/Pausable.sol";
 
-contract PermitDepositTest is UnitTestBase {
+contract DelegateCirculateTest is UnitTestBase {
     // common variables
     uint256 amount = 1000e6;
     uint256 deadline = block.timestamp + 1000;
@@ -15,7 +15,7 @@ contract PermitDepositTest is UnitTestBase {
     bytes32 private constant PERMIT_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
-    function test_PermitDeposit() public {
+    function test_delegateCirculate() public {
         uint256 aliceBalanceBefore = usdc.balanceOf(alice);
 
         // Sign Permit
@@ -27,7 +27,7 @@ contract PermitDepositTest is UnitTestBase {
 
         // Act
         vm.startPrank(delegator);
-        circulator.permitDeposit(permitData, delegateData);
+        circulator.delegateCirculate(permitData, delegateData);
         vm.stopPrank();
 
         // Assert
@@ -49,7 +49,7 @@ contract PermitDepositTest is UnitTestBase {
 
         vm.prank(delegator);
         vm.expectRevert(Pausable.EnforcedPause.selector);
-        circulator.permitDeposit(permitData, delegateData);
+        circulator.delegateCirculate(permitData, delegateData);
     }
 
     function test_RevertWhen_DelegateDataChanged() public {
@@ -68,7 +68,7 @@ contract PermitDepositTest is UnitTestBase {
         // Act & Assert
         vm.startPrank(delegator);
         vm.expectRevert(ICirculator.InvalidDelegateSignature.selector);
-        circulator.permitDeposit(permitData, delegateData);
+        circulator.delegateCirculate(permitData, delegateData);
         vm.stopPrank();
     }
 
@@ -79,7 +79,7 @@ contract PermitDepositTest is UnitTestBase {
         (v, r, s) = _signDelegate(alicePk, chainADomain, _toBytes32(bob));
         ICirculator.DelegateData memory delegateData = ICirculator.DelegateData(chainADomain, _toBytes32(bob), v, r, s);
         vm.startPrank(delegator);
-        circulator.permitDeposit(permitData, delegateData);
+        circulator.delegateCirculate(permitData, delegateData);
 
         // Only re-sign the permit signature, leave the delegate signature the same
         (v, r, s) = _signPermit(alicePk, deadline, amount);
@@ -87,7 +87,7 @@ contract PermitDepositTest is UnitTestBase {
 
         // Act & Assert
         vm.expectRevert(ICirculator.InvalidDelegateSignature.selector);
-        circulator.permitDeposit(permitData, delegateData);
+        circulator.delegateCirculate(permitData, delegateData);
 
         vm.stopPrank();
     }
@@ -121,7 +121,7 @@ contract PermitDepositTest is UnitTestBase {
         view
         returns (uint8 v, bytes32 r, bytes32 s)
     {
-        bytes32 typeHash = circulator.DELEGATE_DEPOSIT_TYPEHASH();
+        bytes32 typeHash = circulator.DELEGATE_CIRCULATE_TYPEHASH();
         bytes32 hashedStruct = keccak256(abi.encode(typeHash, destDomain, recipient, nonce));
 
         bytes32 domainSeparator = circulator.DOMAIN_SEPARATOR();
