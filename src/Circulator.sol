@@ -156,6 +156,7 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
         if (fee > permitData.amount) revert FeeNotCovered();
 
         // Permit and fetch asset
+        // slither-disable-next-line arbitrary-send-erc20-permit
         IERC20Permit(circleAsset).permit(
             permitData.sender,
             address(this),
