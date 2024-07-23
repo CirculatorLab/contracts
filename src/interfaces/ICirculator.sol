@@ -49,7 +49,8 @@ interface ICirculator {
         bytes32 s;
     }
 
-    /// @notice Emitted when someone teleports tokens to another domain.
+    /// @notice Emitted when a someone teleport tokens to another domain using permit.
+    /// @param delegator Address of the relayer.
     /// @param sender Address of the sender.
     /// @param receiver Address of the receiver.
     /// @param destinationDomain Destination domain ID.
@@ -62,25 +63,8 @@ interface ICirculator {
         uint32 indexed destinationDomain,
         uint256 amount,
         uint256 fee,
-        uint64 nonce
-    );
-
-    /// @notice Emitted when a someone teleport tokens to another domain using permit.
-    /// @param relayer Address of the relayer.
-    /// @param sender Address of the sender.
-    /// @param receiver Address of the receiver.
-    /// @param destinationDomain Destination domain ID.
-    /// @param amount Amount circulated
-    /// @param fee Fee paid
-    /// @param nonce Unique nonce for this token burn
-    event DelegateCirculate(
-        address indexed relayer,
-        address indexed sender,
-        bytes32 receiver,
-        uint32 indexed destinationDomain,
-        uint256 amount,
-        uint256 fee,
-        uint64 nonce
+        uint64 nonce,
+        address delegator
     );
 
     /// @notice Emitted when the relayer fee for a destination is updated.

@@ -113,24 +113,26 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
      * @param _amount Amount to teleport.
      * @param _recipient The address of the recipient in bytes32 format.
      * @param _destinationDomain The ID of the destination domain.
-     * @return _nonce Burn nonce for the teleport.
+     * @return nonce Burn nonce for the teleport.
      */
     function circulate(uint256 _amount, bytes32 _recipient, uint32 _destinationDomain)
         external
         whenNotPaused
         onlyWithinBurnLimit(_amount)
-        returns (uint64 _nonce)
+        returns (uint64 nonce)
     {
         // Check if fee is covered
         uint256 fee = totalFee(_amount, _destinationDomain);
         if (fee > _amount) revert FeeNotCovered();
 
+        uint256 burnAmt = _amount - fee;
+
         // Burn the token in TokenMessenger
         IERC20(circleAsset).safeTransferFrom(msg.sender, address(this), _amount);
-        _nonce = tokenMessenger.depositForBurn(_amount - fee, _destinationDomain, _recipient, circleAsset);
+        nonce = tokenMessenger.depositForBurn(burnAmt, _destinationDomain, _recipient, circleAsset);
 
         // Emit an event
-        emit Circulate(msg.sender, _recipient, _destinationDomain, _amount, fee, _nonce);
+        emit Circulate(msg.sender, _recipient, _destinationDomain, burnAmt, fee, nonce, address(0));
     }
 
     /**
@@ -190,8 +192,8 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
             tokenMessenger.depositForBurn(burnAmt, delegateData.destinationDomain, delegateData.recipient, circleAsset);
 
         // Emit an event
-        emit DelegateCirculate(
-            msg.sender, permitData.sender, delegateData.recipient, delegateData.destinationDomain, burnAmt, fee, nonce
+        emit Circulate(
+            permitData.sender, delegateData.recipient, delegateData.destinationDomain, burnAmt, fee, nonce, msg.sender
         );
     }
 
