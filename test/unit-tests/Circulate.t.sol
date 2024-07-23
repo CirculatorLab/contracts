@@ -5,8 +5,8 @@ import {UnitTestBase} from "./Base.t.sol";
 import {ICirculator} from "../../src/interfaces/ICirculator.sol";
 import {Pausable} from "@openzeppelin/utils/Pausable.sol";
 
-contract DepositTest is UnitTestBase {
-    function test_Deposit() public {
+contract CirculateTest is UnitTestBase {
+    function test_Circulate() public {
         // Arrange
         uint256 amount = 1000e6;
         uint256 aliceBalanceBefore = usdc.balanceOf(alice);

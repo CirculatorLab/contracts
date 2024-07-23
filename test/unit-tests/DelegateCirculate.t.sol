@@ -7,7 +7,7 @@ import {ICirculator} from "src/interfaces/ICirculator.sol";
 import {MessageHashUtils} from "openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol";
 import {Pausable} from "@openzeppelin/utils/Pausable.sol";
 
-contract delegateCirculateTest is UnitTestBase {
+contract DelegateCirculateTest is UnitTestBase {
     // common variables
     uint256 amount = 1000e6;
     uint256 deadline = block.timestamp + 1000;
