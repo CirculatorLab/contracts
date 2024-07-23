@@ -78,7 +78,7 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
 
         tokenMessenger = ITokenMessenger(_tokenMessenger);
 
-        IERC20(_circleAsset).approve(_tokenMessenger, type(uint256).max);
+        IERC20(_circleAsset).safeIncreaseAllowance(_tokenMessenger, type(uint256).max);
 
         localMinter = ITokenMinter(_localMinter);
         // Set approved delegators
@@ -143,6 +143,7 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
      * @param permitData Data needed for the permit.
      * @param delegateData Data needed for the delegate.
      */
+    // slither-disable-next-line arbitrary-send-erc20-permit
     function delegateCirculate(PermitData calldata permitData, DelegateData calldata delegateData)
         external
         whenNotPaused
@@ -156,7 +157,6 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
         if (fee > permitData.amount) revert FeeNotCovered();
 
         // Permit and fetch asset
-        // slither-disable-next-line arbitrary-send-erc20-permit
         IERC20Permit(circleAsset).permit(
             permitData.sender,
             address(this),
