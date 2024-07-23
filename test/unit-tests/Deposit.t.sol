@@ -15,7 +15,7 @@ contract DepositTest is UnitTestBase {
         // Act
         vm.startPrank(alice);
         usdc.approve(address(circulator), amount);
-        circulator.deposit(amount, _toBytes32(alice), chainADomain);
+        circulator.circulate(amount, _toBytes32(alice), chainADomain);
         vm.stopPrank();
 
         // Assert
@@ -34,7 +34,7 @@ contract DepositTest is UnitTestBase {
         vm.startPrank(alice);
         usdc.approve(address(circulator), amount);
         vm.expectRevert(ICirculator.FeeNotCovered.selector);
-        circulator.deposit(amount, _toBytes32(alice), chainADomain);
+        circulator.circulate(amount, _toBytes32(alice), chainADomain);
         vm.stopPrank();
     }
 
@@ -47,7 +47,7 @@ contract DepositTest is UnitTestBase {
         circulator.pause();
 
         vm.expectRevert(Pausable.EnforcedPause.selector);
-        circulator.deposit(amount, _toBytes32(alice), chainADomain);
+        circulator.circulate(amount, _toBytes32(alice), chainADomain);
         vm.stopPrank();
     }
 }
