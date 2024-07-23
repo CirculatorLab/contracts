@@ -32,7 +32,7 @@ abstract contract SettingHelper {
         config.usdc = 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d;
 
         config = systemConfigs["BaseSepolia"];
-        config.circulator = 0xa937d41d7F28EEbE18eD697C99cEfaF8B5590aE2;
+        config.circulator = 0x005C57acB4Dd229e8B2E1ba1bC7439C93eCBD9F9;
         config.tokenMessenger = 0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5;
         config.usdc = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
 

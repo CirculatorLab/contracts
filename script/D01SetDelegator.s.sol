@@ -2,7 +2,6 @@
 pragma solidity ^0.8.23;
 
 import {Script, console2} from "forge-std/Script.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../src/Circulator.sol";
 import "./utils/SettingHelper.sol";
 
