@@ -21,8 +21,8 @@ contract DeploymentTest is UnitTestBase {
             delegateFee,
             serviceFeeBPS,
             domainIds,
-            relayerFeeMaps,
-            minFeeMaps
+            relayerFees,
+            minFees
         );
 
         // assert
