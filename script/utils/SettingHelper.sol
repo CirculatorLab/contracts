@@ -37,7 +37,7 @@ abstract contract SettingHelper {
 
         // PolygonPoSAmoy
         config = systemConfigs[80002];
-        config.circulator = 0x86C64D50c68e00a2AF9BE51a3EBD009995403eBd;
+        config.circulator = 0x4A62C58c9c788d31A9426e6878d017a68328A052;
         config.usdc = 0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582;
     }
 
