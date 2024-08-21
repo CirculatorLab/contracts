@@ -12,12 +12,12 @@ abstract contract SettingHelper {
     constructor() {
         // Ethereum Sepolia
         SystemConfig storage config = systemConfigs[11155111];
-        config.circulator = address(0);
+        config.circulator = 0x4A62C58c9c788d31A9426e6878d017a68328A052;
         config.usdc = 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238;
 
         // AvalancheFuji
         config = systemConfigs[43113];
-        config.circulator = address(0);
+        config.circulator = 0x86C64D50c68e00a2AF9BE51a3EBD009995403eBd;
         config.usdc = 0x5425890298aed601595a70AB815c96711a31Bc65;
 
         // OPSepolia
@@ -27,7 +27,7 @@ abstract contract SettingHelper {
 
         // Arbitrum Sepolia
         config = systemConfigs[421614];
-        config.circulator = address(0);
+        config.circulator = 0x86C64D50c68e00a2AF9BE51a3EBD009995403eBd;
         config.usdc = 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d;
 
         // BaseSepolia
@@ -37,7 +37,7 @@ abstract contract SettingHelper {
 
         // PolygonPoSAmoy
         config = systemConfigs[80002];
-        config.circulator = address(0);
+        config.circulator = 0x4A62C58c9c788d31A9426e6878d017a68328A052;
         config.usdc = 0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582;
     }
 
