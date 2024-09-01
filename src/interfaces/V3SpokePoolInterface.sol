@@ -218,6 +218,8 @@ interface V3SpokePoolInterface {
     function executeV3SlowRelayLeaf(V3SlowFill calldata slowFillLeaf, uint32 rootBundleId, bytes32[] calldata proof)
         external;
 
+    function numberOfDeposits() external view returns (uint32);
+
     /**
      *
      *              ERRORS                *
