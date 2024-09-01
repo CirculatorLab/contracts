@@ -87,7 +87,8 @@ interface ICirculator {
         uint256 amount,
         uint256 fee,
         uint64 nonce,
-        address delegator
+        address delegator,
+        CirculateType circulateType
     );
 
     /// @notice Emitted when the relayer fee for a destination is updated.

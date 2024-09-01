@@ -128,7 +128,7 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
         nonce = _circulate(burnAmount, _outputAmount, _recipient, _destinationDomain, _fillDeadline, _type);
 
         // Emit an event
-        emit Circulate(msg.sender, _recipient, _destinationDomain, burnAmount, fee, nonce, address(0));
+        emit Circulate(msg.sender, _recipient, _destinationDomain, burnAmount, fee, nonce, address(0), _type);
     }
 
     /**
@@ -202,7 +202,8 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
             burnAmount,
             fee,
             nonce,
-            msg.sender
+            msg.sender,
+            _type
         );
     }
 
@@ -219,6 +220,7 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
                 _burnAmount, _destinationDomain, bytes32(bytes20(_recipient)), circleAsset
             );
         } else if (_type == CirculateType.Across) {
+            nonce = v3SpokePool.numberOfDeposits();
             v3SpokePool.depositV3(
                 address(this), // depositor
                 _recipient, // recipient
@@ -231,7 +233,7 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
                 uint32(block.timestamp), // quoteTimestamp
                 _fillDeadline, // fillDeadline
                 0, // exclusivityDeadline
-                "Support by Circulator"
+                ""
             );
         }
     }
