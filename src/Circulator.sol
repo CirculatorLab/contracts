@@ -6,6 +6,7 @@ import {IERC20Permit} from "@openzeppelin/token/ERC20/extensions/IERC20Permit.so
 import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
 import {ITokenMessenger} from "./interfaces/ITokenMessenger.sol";
 import {ITokenMinter} from "./interfaces/ITokenMinter.sol";
+import {V3SpokePoolInterface} from "./interfaces/V3SpokePoolInterface.sol";
 import {ICirculator} from "./interfaces/ICirculator.sol";
 
 // Inherited contracts
@@ -23,8 +24,9 @@ import {SafeERC20} from "@openzeppelin/token/ERC20/utils/SafeERC20.sol";
 contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
     using SafeERC20 for IERC20;
 
-    bytes32 public constant DELEGATE_CIRCULATE_TYPEHASH =
-        keccak256("DelegateCirculate(uint32 destinationDomain,bytes32 recipient,uint256 nonce)");
+    bytes32 public constant DELEGATE_CIRCULATE_TYPEHASH = keccak256(
+        "DelegateCirculate(uint32 destinationDomain,uint32 fillDeadline,address recipient,uint256 outputAmount,uint256 nonce)"
+    );
 
     ///@dev asset to be circulated.
     address public immutable circleAsset;
@@ -35,17 +37,17 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
     ///@dev Circle TokenMinter contract.
     ITokenMinter public immutable localMinter;
 
+    ///@dev Across SpokePool contract.
+    V3SpokePoolInterface public immutable v3SpokePool;
+
     ///@dev Fee for delegators. denominated in circleAsset
     uint256 public delegateFee;
 
     ///@dev Service fee in BPS
     uint256 public serviceFeeBPS;
 
-    ///@dev Mapping of destination domain to relayer fee.
-    mapping(uint32 destinationDomain => uint256 fee) public relayerFee;
-
-    ///@dev Mapping of destination domain to base fee. (minimum fee to destination chain per transaction)
-    mapping(uint32 destinationDomain => uint256 fee) public minFee;
+    ///@dev Mapping of destination domain to configs(relayer fee, base fee, chainId, token).
+    mapping(uint32 destinationDomain => DestinationCofigs) public destinationConfigs;
 
     ///@dev Mapping of authorized delegators
     mapping(address delegator => bool) public delegators;
@@ -53,43 +55,36 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
     /**
      * @param _tokenMessenger Address of the tokenMessenger contract.
      * @param _localMinter Address of the tokenMinter contract.
+     * @param _v3SpokePool Address of the v3SpokePool contract.
      * @param _feeCollector Address of the fee collector.
      * @param _delegators List of initial delegator addresses to be set.
      * @param _delegateFee Fixed fee for the source chain.
      * @param _serviceFeeBPS Percentage of the service fee (for the source chain).
-     * @param _domainIds List of domain IDs.
-     * @param _relayerFees List of relayer fees corresponding to each domain ID.
-     * @param _minFees List of base fees corresponding to each domain ID.
      */
     constructor(
         address _circleAsset,
         address _tokenMessenger,
         address _localMinter,
+        address _v3SpokePool,
         address _initialOwner,
         address _feeCollector,
         address[] memory _delegators,
         uint256 _delegateFee,
-        uint256 _serviceFeeBPS,
-        uint32[] memory _domainIds,
-        uint256[] memory _relayerFees,
-        uint256[] memory _minFees
+        uint256 _serviceFeeBPS
     ) FeeOperator(_initialOwner, _feeCollector) EIP712("Circulator", "v1") {
         circleAsset = _circleAsset;
-
         tokenMessenger = ITokenMessenger(_tokenMessenger);
+        localMinter = ITokenMinter(_localMinter);
+        v3SpokePool = V3SpokePoolInterface(_v3SpokePool);
 
         IERC20(_circleAsset).safeIncreaseAllowance(_tokenMessenger, type(uint256).max);
+        IERC20(_circleAsset).safeIncreaseAllowance(_v3SpokePool, type(uint256).max);
 
-        localMinter = ITokenMinter(_localMinter);
         // Set approved delegators
         for (uint256 i = 0; i < _delegators.length; i++) {
             delegators[_delegators[i]] = true;
         }
-        // Set base fee and relayer fees
-        for (uint256 i = 0; i < _domainIds.length; i++) {
-            relayerFee[_domainIds[i]] = _relayerFees[i];
-            minFee[_domainIds[i]] = _minFees[i];
-        }
+
         // Source chain fixed fee
         delegateFee = _delegateFee;
         // Service fee in BPS
@@ -108,45 +103,46 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
     }
 
     /**
-     * @notice Teleport a specified amount to the destination domain and emits a `Circulate` event.
+     * @notice Circulate a specified amount to the destination domain and emits a `Circulate` event.
      * @dev This function burns a token amount for the given recipient and destination domain.
-     * @param _amount Amount to teleport.
+     * @param _inputAmount Amount to circulate.
      * @param _recipient The address of the recipient in bytes32 format.
      * @param _destinationDomain The ID of the destination domain.
-     * @return nonce Burn nonce for the teleport.
+     * @param _type Circulate type: Cctp or Across.
+     * @return nonce Burn nonce for the circulate.
      */
-    function circulate(uint256 _amount, bytes32 _recipient, uint32 _destinationDomain)
-        external
-        whenNotPaused
-        onlyWithinBurnLimit(_amount)
-        returns (uint64 nonce)
-    {
+    function circulate(
+        uint256 _inputAmount,
+        uint256 _outputAmount,
+        address _recipient,
+        uint32 _destinationDomain,
+        uint32 _fillDeadline,
+        CirculateType _type
+    ) external whenNotPaused onlyWithinBurnLimit(_inputAmount) returns (uint64 nonce) {
         // Check if fee is covered
-        uint256 fee = totalFee(_amount, _destinationDomain);
-        if (fee > _amount) revert FeeNotCovered();
+        uint256 fee = totalFee(_inputAmount, _destinationDomain);
+        if (fee > _inputAmount) revert FeeNotCovered();
 
-        uint256 burnAmt = _amount - fee;
+        uint256 burnAmount = _inputAmount - fee;
 
-        // Burn the token in TokenMessenger
-        IERC20(circleAsset).safeTransferFrom(msg.sender, address(this), _amount);
-        nonce = tokenMessenger.depositForBurn(burnAmt, _destinationDomain, _recipient, circleAsset);
+        nonce = _circulate(burnAmount, _outputAmount, _recipient, _destinationDomain, _fillDeadline, _type);
 
         // Emit an event
-        emit Circulate(msg.sender, _recipient, _destinationDomain, burnAmt, fee, nonce, address(0));
+        emit Circulate(msg.sender, _recipient, _destinationDomain, burnAmount, fee, nonce, address(0));
     }
 
     /**
-     * @notice Teleport on behalf of a user with signatures
-     *
+     * @notice Circulate on behalf of a user with signatures
      * @dev This function can only be trusted when circleAsset is set to a valid ERC20 token from Circle, with `permit` functionality.
      *      If a token doesn't have permit but has a fallback function, this could lead to potential attack.
-     *
      * @dev In the current version, only whitelisted delegator can call this function to circulate on behalf of other users.
      * @param permitData Data needed for the permit.
      * @param delegateData Data needed for the delegate.
+     * @param _type Circulate type: Cctp or Across.
+     * @return nonce Burn nonce for the circulate.
      */
     // slither-disable-next-line arbitrary-send-erc20-permit
-    function delegateCirculate(PermitData calldata permitData, DelegateData calldata delegateData)
+    function delegateCirculate(PermitData calldata permitData, DelegateData calldata delegateData, CirculateType _type)
         external
         whenNotPaused
         onlyWithinBurnLimit(permitData.amount)
@@ -170,14 +166,16 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
         );
         IERC20(circleAsset).safeTransferFrom(permitData.sender, address(this), permitData.amount);
 
-        uint256 burnAmt = permitData.amount - fee;
+        uint256 burnAmount = permitData.amount - fee;
 
         // Verify the delegate data and signature
         bytes32 structHash = keccak256(
             abi.encode(
                 DELEGATE_CIRCULATE_TYPEHASH,
                 delegateData.destinationDomain,
+                delegateData.fillDeadline,
                 delegateData.recipient,
+                delegateData.outputAmount,
                 _useNonce(permitData.sender)
             )
         );
@@ -187,14 +185,55 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
             revert InvalidDelegateSignature();
         }
 
-        // Burn the token in TokenMessenger
-        nonce =
-            tokenMessenger.depositForBurn(burnAmt, delegateData.destinationDomain, delegateData.recipient, circleAsset);
+        nonce = _circulate(
+            burnAmount,
+            delegateData.outputAmount,
+            delegateData.recipient,
+            delegateData.destinationDomain,
+            delegateData.fillDeadline,
+            _type
+        );
 
         // Emit an event
         emit Circulate(
-            permitData.sender, delegateData.recipient, delegateData.destinationDomain, burnAmt, fee, nonce, msg.sender
+            permitData.sender,
+            delegateData.recipient,
+            delegateData.destinationDomain,
+            burnAmount,
+            fee,
+            nonce,
+            msg.sender
         );
+    }
+
+    function _circulate(
+        uint256 _burnAmount,
+        uint256 _outputAmount,
+        address _recipient,
+        uint32 _destinationDomain,
+        uint32 _fillDeadline,
+        CirculateType _type
+    ) internal returns (uint64 nonce) {
+        if (_type == CirculateType.Cctp) {
+            nonce = tokenMessenger.depositForBurn(
+                _burnAmount, _destinationDomain, bytes32(bytes20(_recipient)), circleAsset
+            );
+        } else if (_type == CirculateType.Across) {
+            v3SpokePool.depositV3(
+                address(this), // depositor
+                _recipient, // recipient
+                circleAsset, // inputToken
+                destinationConfigs[_destinationDomain].token, // outputToken
+                _burnAmount, // inputAmount
+                _outputAmount, // outputAmount
+                destinationConfigs[_destinationDomain].chainId, // destinationChainId
+                address(0), // exclusiveRelayer
+                uint32(block.timestamp), // quoteTimestamp
+                _fillDeadline, // fillDeadline
+                0, // exclusivityDeadline
+                "Support by Circulator"
+            );
+        }
     }
 
     /**
@@ -207,8 +246,8 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
      * @return _finalFee The total fee denominated in circleAsset
      */
     function totalFee(uint256 _amount, uint32 _destinationDomain) public view returns (uint256 _finalFee) {
-        uint256 _txFee = getServiceFee(_amount) + relayerFee[_destinationDomain];
-        _finalFee = _max(_txFee, minFee[_destinationDomain]);
+        uint256 _txFee = getServiceFee(_amount) + destinationConfigs[_destinationDomain].relayerFee;
+        _finalFee = _max(_txFee, destinationConfigs[_destinationDomain].minFee);
     }
 
     /**
@@ -223,13 +262,40 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
     }
 
     /**
+     * @notice Initializes the destination domain configurations.
+     * @dev Only callable by the contract owner.
+     * @param _domainIds List of domain IDs.
+     * @param _relayerFees List of relayer fees corresponding to each domain ID.
+     * @param _minFees List of base fees corresponding to each domain ID.
+     * @param _chainIds List of chain IDs corresponding to each domain ID.
+     * @param _tokens List of token addresses corresponding to each domain ID.
+     */
+    function initDestinationConfigs(
+        uint32[] memory _domainIds,
+        uint256[] memory _relayerFees,
+        uint256[] memory _minFees,
+        uint256[] memory _chainIds,
+        address[] memory _tokens
+    ) external onlyOwner {
+        for (uint256 i = 0; i < _domainIds.length; i++) {
+            if (_chainIds[i] == 0 || _tokens[i] == address(0)) revert InvalidConfig();
+            destinationConfigs[_domainIds[i]] = DestinationCofigs({
+                relayerFee: _relayerFees[i],
+                minFee: _minFees[i],
+                chainId: _chainIds[i],
+                token: _tokens[i]
+            });
+        }
+    }
+
+    /**
      * @notice Sets the relayer fee for a specific destination domain.
      * @dev Only callable by the contract owner.
      * @param _destinationDomain The domain ID for which the relayer fee is set.
      * @param _fee The new relayer fee to be set.
      */
     function setDestinationRelayerFee(uint32 _destinationDomain, uint256 _fee) external onlyOwner {
-        relayerFee[_destinationDomain] = _fee;
+        destinationConfigs[_destinationDomain].relayerFee = _fee;
         emit DestinationRelayerFeeUpdated(_destinationDomain, _fee);
     }
 
@@ -240,8 +306,30 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
      * @param _fee The new base fee to be set.
      */
     function setDestinationMinFee(uint32 _destinationDomain, uint256 _fee) external onlyOwner {
-        minFee[_destinationDomain] = _fee;
+        destinationConfigs[_destinationDomain].minFee = _fee;
         emit DestinationMinFeeUpdated(_destinationDomain, _fee);
+    }
+
+    /**
+     * @notice Sets the chain ID for a specific destination domain.
+     * @dev Only callable by the contract owner.
+     * @param _destinationDomain The domain ID for which the chain ID is set.
+     * @param _chainId The new chain ID to be set.
+     */
+    function setDestinationChainId(uint32 _destinationDomain, uint256 _chainId) external onlyOwner {
+        destinationConfigs[_destinationDomain].chainId = _chainId;
+        emit DestinationChainIdUpdated(_destinationDomain, _chainId);
+    }
+
+    /**
+     * @notice Sets the token address for a specific destination domain.
+     * @dev Only callable by the contract owner.
+     * @param _destinationDomain The domain ID for which the token address is set.
+     * @param _token The new token address to be set.
+     */
+    function setDestinationToken(uint32 _destinationDomain, address _token) external onlyOwner {
+        destinationConfigs[_destinationDomain].token = _token;
+        emit DestinationTokenUpdated(_destinationDomain, _token);
     }
 
     /**
