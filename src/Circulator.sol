@@ -35,7 +35,7 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
     ITokenMessenger public immutable tokenMessenger;
 
     ///@dev Circle TokenMinter contract.
-    ITokenMinter public immutable localMinter;
+    ITokenMinter public immutable tokenMinter;
 
     ///@dev Across SpokePool contract.
     V3SpokePoolInterface public immutable v3SpokePool;
@@ -54,7 +54,7 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
 
     /**
      * @param _tokenMessenger Address of the tokenMessenger contract.
-     * @param _localMinter Address of the tokenMinter contract.
+     * @param _tokenMinter Address of the tokenMinter contract.
      * @param _v3SpokePool Address of the v3SpokePool contract.
      * @param _feeCollector Address of the fee collector.
      * @param _delegators List of initial delegator addresses to be set.
@@ -64,7 +64,7 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
     constructor(
         address _circleAsset,
         address _tokenMessenger,
-        address _localMinter,
+        address _tokenMinter,
         address _v3SpokePool,
         address _initialOwner,
         address _feeCollector,
@@ -74,7 +74,7 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
     ) FeeOperator(_initialOwner, _feeCollector) EIP712("Circulator", "v1") {
         circleAsset = _circleAsset;
         tokenMessenger = ITokenMessenger(_tokenMessenger);
-        localMinter = ITokenMinter(_localMinter);
+        tokenMinter = ITokenMinter(_tokenMinter);
         v3SpokePool = V3SpokePoolInterface(_v3SpokePool);
 
         IERC20(_circleAsset).safeIncreaseAllowance(_tokenMessenger, type(uint256).max);
@@ -93,11 +93,11 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
 
     /**
      * @notice Modifier to ensure that a given burn amount for a token doesn't exceed the allowed burn limit.
-     * @dev Queries the `burnLimitsPerMessage` from the `localMinter` to get the maximum allowed burn amount for the token.
+     * @dev Queries the `burnLimitsPerMessage` from the `tokenMinter` to get the maximum allowed burn amount for the token.
      * @param amount The amount of the token being requested to burn.
      */
     modifier onlyWithinBurnLimit(uint256 amount) {
-        uint256 _allowedBurnAmount = localMinter.burnLimitsPerMessage(circleAsset);
+        uint256 _allowedBurnAmount = tokenMinter.burnLimitsPerMessage(circleAsset);
         if (amount > _allowedBurnAmount) revert BurnAmountExceedsLimit();
         _;
     }
