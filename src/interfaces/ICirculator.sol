@@ -6,6 +6,9 @@ interface ICirculator {
     /// @dev Revert when fee is greater than amount being circulated.
     error FeeNotCovered();
 
+    /// @dev Revert when burn amount is less than output amount.
+    error InsufficientBurnAmount();
+
     /// @dev Revert when burn amount exceeds limit set by Circle TokenMinter.
     error BurnAmountExceedsLimit();
 
@@ -58,13 +61,17 @@ interface ICirculator {
 
     /// @dev Struct for encapsulating data needed for delegate circulate
     /// @param destinationDomain Destination domain ID.
+    /// @param fillDeadline Deadline for the filler to fill the transaction.
+    /// @param circulateType Circulate type: Cctp or Across.
     /// @param recipient Address of the recipient.
+    /// @param outputAmount Amount to be received by the recipient.å
     /// @param v Signature v.
     /// @param r Signature r.
     /// @param s Signature s.
     struct DelegateData {
         uint32 destinationDomain;
         uint32 fillDeadline;
+        CirculateType circulateType;
         address recipient;
         uint256 outputAmount;
         uint8 v;
@@ -149,14 +156,11 @@ interface ICirculator {
      * @dev In the current version, only whitelisted delegator can call this function to circulate on behalf of other users.
      * @param _permitData Data needed for the permit.
      * @param _delegateData Data needed for the delegate.
-     * @param _type Circulate type: Cctp or Across.
      * @return _nonce Burn nonce for the circulate.
      */
-    function delegateCirculate(
-        PermitData calldata _permitData,
-        DelegateData calldata _delegateData,
-        CirculateType _type
-    ) external returns (uint64 _nonce);
+    function delegateCirculate(PermitData calldata _permitData, DelegateData calldata _delegateData)
+        external
+        returns (uint64 _nonce);
 
     /**
      * @notice Calculates the total fee for a given amount and destination domain.
@@ -167,7 +171,10 @@ interface ICirculator {
      * @param _destinationDomain The domain ID for which relayer and base fees are fetched.
      * @return _finalFee The total fee denominated in circleAsset
      */
-    function totalFee(uint256 _amount, uint32 _destinationDomain) external view returns (uint256 _finalFee);
+    function totalFee(uint256 _amount, uint32 _destinationDomain, CirculateType _type)
+        external
+        view
+        returns (uint256 _finalFee);
 
     /**
      * @notice Calculates the service fee for a given amount.

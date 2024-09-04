@@ -6,7 +6,7 @@ import {IERC20Permit} from "@openzeppelin/token/ERC20/extensions/IERC20Permit.so
 import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
 import {ITokenMessenger} from "./interfaces/ITokenMessenger.sol";
 import {ITokenMinter} from "./interfaces/ITokenMinter.sol";
-import {V3SpokePoolInterface} from "./interfaces/V3SpokePoolInterface.sol";
+import {IV3SpokePool} from "./interfaces/IV3SpokePool.sol";
 import {ICirculator} from "./interfaces/ICirculator.sol";
 
 // Inherited contracts
@@ -25,7 +25,7 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
     using SafeERC20 for IERC20;
 
     bytes32 public constant DELEGATE_CIRCULATE_TYPEHASH = keccak256(
-        "DelegateCirculate(uint32 destinationDomain,uint32 fillDeadline,address recipient,uint256 outputAmount,uint256 nonce)"
+        "DelegateCirculate(uint32 destinationDomain,uint32 fillDeadline,uint8 circulateType,address recipient,uint256 outputAmount,uint256 nonce)"
     );
 
     ///@dev asset to be circulated.
@@ -38,7 +38,7 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
     ITokenMinter public immutable tokenMinter;
 
     ///@dev Across SpokePool contract.
-    V3SpokePoolInterface public immutable v3SpokePool;
+    IV3SpokePool public immutable v3SpokePool;
 
     ///@dev Fee for delegators. denominated in circleAsset
     uint256 public delegateFee;
@@ -75,7 +75,7 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
         circleAsset = _circleAsset;
         tokenMessenger = ITokenMessenger(_tokenMessenger);
         tokenMinter = ITokenMinter(_tokenMinter);
-        v3SpokePool = V3SpokePoolInterface(_v3SpokePool);
+        v3SpokePool = IV3SpokePool(_v3SpokePool);
 
         IERC20(_circleAsset).safeIncreaseAllowance(_tokenMessenger, type(uint256).max);
         IERC20(_circleAsset).safeIncreaseAllowance(_v3SpokePool, type(uint256).max);
@@ -120,15 +120,15 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
         CirculateType _type
     ) external whenNotPaused onlyWithinBurnLimit(_inputAmount) returns (uint64 nonce) {
         // Check if fee is covered
-        uint256 fee = totalFee(_inputAmount, _destinationDomain);
+        uint256 fee = totalFee(_inputAmount, _destinationDomain, _type);
         if (fee > _inputAmount) revert FeeNotCovered();
 
-        uint256 burnAmount = _inputAmount - fee;
+        // Burn the token in TokenMessenger
+        IERC20(circleAsset).safeTransferFrom(msg.sender, address(this), _inputAmount);
 
-        nonce = _circulate(burnAmount, _outputAmount, _recipient, _destinationDomain, _fillDeadline, _type);
-
-        // Emit an event
-        emit Circulate(msg.sender, _recipient, _destinationDomain, burnAmount, fee, nonce, address(0), _type);
+        nonce = _circulate(
+            msg.sender, _recipient, _inputAmount, _outputAmount, fee, _destinationDomain, _fillDeadline, _type
+        );
     }
 
     /**
@@ -138,11 +138,10 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
      * @dev In the current version, only whitelisted delegator can call this function to circulate on behalf of other users.
      * @param permitData Data needed for the permit.
      * @param delegateData Data needed for the delegate.
-     * @param _type Circulate type: Cctp or Across.
      * @return nonce Burn nonce for the circulate.
      */
     // slither-disable-next-line arbitrary-send-erc20-permit
-    function delegateCirculate(PermitData calldata permitData, DelegateData calldata delegateData, CirculateType _type)
+    function delegateCirculate(PermitData calldata permitData, DelegateData calldata delegateData)
         external
         whenNotPaused
         onlyWithinBurnLimit(permitData.amount)
@@ -151,7 +150,8 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
         if (!delegators[msg.sender]) revert NotDelegator();
 
         // Calculate delegate mode fee
-        uint256 fee = totalFee(permitData.amount, delegateData.destinationDomain) + delegateFee;
+        uint256 fee =
+            totalFee(permitData.amount, delegateData.destinationDomain, delegateData.circulateType) + delegateFee;
         if (fee > permitData.amount) revert FeeNotCovered();
 
         // Permit and fetch asset
@@ -166,14 +166,13 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
         );
         IERC20(circleAsset).safeTransferFrom(permitData.sender, address(this), permitData.amount);
 
-        uint256 burnAmount = permitData.amount - fee;
-
         // Verify the delegate data and signature
         bytes32 structHash = keccak256(
             abi.encode(
                 DELEGATE_CIRCULATE_TYPEHASH,
                 delegateData.destinationDomain,
                 delegateData.fillDeadline,
+                delegateData.circulateType,
                 delegateData.recipient,
                 delegateData.outputAmount,
                 _useNonce(permitData.sender)
@@ -186,56 +185,54 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
         }
 
         nonce = _circulate(
-            burnAmount,
-            delegateData.outputAmount,
-            delegateData.recipient,
-            delegateData.destinationDomain,
-            delegateData.fillDeadline,
-            _type
-        );
-
-        // Emit an event
-        emit Circulate(
             permitData.sender,
             delegateData.recipient,
-            delegateData.destinationDomain,
-            burnAmount,
+            permitData.amount,
+            delegateData.outputAmount,
             fee,
-            nonce,
-            msg.sender,
-            _type
+            delegateData.destinationDomain,
+            delegateData.fillDeadline,
+            delegateData.circulateType
         );
     }
 
     function _circulate(
-        uint256 _burnAmount,
-        uint256 _outputAmount,
+        address _sender,
         address _recipient,
+        uint256 _inputAmount,
+        uint256 _outputAmount,
+        uint256 _fee,
         uint32 _destinationDomain,
         uint32 _fillDeadline,
         CirculateType _type
     ) internal returns (uint64 nonce) {
+        uint256 burnAmount = _inputAmount - _fee;
+        if (burnAmount < _outputAmount) revert InsufficientBurnAmount();
+
         if (_type == CirculateType.Cctp) {
             nonce = tokenMessenger.depositForBurn(
-                _burnAmount, _destinationDomain, bytes32(bytes20(_recipient)), circleAsset
+                burnAmount, _destinationDomain, bytes32(uint256(uint160(_recipient))), circleAsset
             );
         } else if (_type == CirculateType.Across) {
             nonce = v3SpokePool.numberOfDeposits();
             v3SpokePool.depositV3(
-                address(this), // depositor
+                _sender, // depositor
                 _recipient, // recipient
                 circleAsset, // inputToken
                 destinationConfigs[_destinationDomain].token, // outputToken
-                _burnAmount, // inputAmount
+                burnAmount, // inputAmount
                 _outputAmount, // outputAmount
                 destinationConfigs[_destinationDomain].chainId, // destinationChainId
                 address(0), // exclusiveRelayer
                 uint32(block.timestamp), // quoteTimestamp
                 _fillDeadline, // fillDeadline
                 0, // exclusivityDeadline
-                ""
+                "" // message
             );
         }
+
+        // Emit an event
+        emit Circulate(_sender, _recipient, _destinationDomain, burnAmount, _fee, nonce, msg.sender, _type);
     }
 
     /**
@@ -245,11 +242,17 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
      * or the base fee associated with the destination domain.
      * @param _amount Amount for which the fee needs to be calculated.
      * @param _destinationDomain The domain ID for which relayer and base fees are fetched.
+     * @param _type Circulate type: Cctp or Across.
      * @return _finalFee The total fee denominated in circleAsset
      */
-    function totalFee(uint256 _amount, uint32 _destinationDomain) public view returns (uint256 _finalFee) {
-        uint256 _txFee = getServiceFee(_amount) + destinationConfigs[_destinationDomain].relayerFee;
-        _finalFee = _max(_txFee, destinationConfigs[_destinationDomain].minFee);
+    function totalFee(uint256 _amount, uint32 _destinationDomain, CirculateType _type)
+        public
+        view
+        returns (uint256 _finalFee)
+    {
+        uint256 relayerFee = _type == CirculateType.Cctp ? destinationConfigs[_destinationDomain].relayerFee : 0;
+        uint256 txFee = getServiceFee(_amount) + relayerFee;
+        _finalFee = _max(txFee, destinationConfigs[_destinationDomain].minFee);
     }
 
     /**
@@ -365,6 +368,15 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
             delegators[_delegators[i]] = _status;
             emit DelegatorUpdated(_delegators[i], _status);
         }
+    }
+
+    /**
+     * @notice Returns the destination domain configurations.
+     * @param _destinationDomain The domain ID for which the configurations are fetched.
+     * @return _configs The destination domain configurations.
+     */
+    function getDestinationConfigs(uint32 _destinationDomain) external view returns (DestinationCofigs memory) {
+        return destinationConfigs[_destinationDomain];
     }
 
     /**
