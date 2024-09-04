@@ -55,7 +55,7 @@ contract DestinationConfigTest is UnitTestBase {
     function test_EmitEventWhen_SetDestinationChainId() public {
         // Arrange
         vm.prank(owner);
-        
+
         // Act & Assert
         vm.expectEmit(true, true, false, true);
         emit ICirculator.DestinationChainIdUpdated(TEST_DOMAIN, NEW_CHAIN_ID);
@@ -65,7 +65,7 @@ contract DestinationConfigTest is UnitTestBase {
     function test_EmitEventWhen_SetDestinationToken() public {
         // Arrange
         vm.prank(owner);
-        
+
         // Act & Assert
         vm.expectEmit(true, true, false, true);
         emit ICirculator.DestinationTokenUpdated(TEST_DOMAIN, NEW_TOKEN_ADDRESS);
