@@ -12,17 +12,16 @@ import {ICirculator} from "./interfaces/ICirculator.sol";
 // Inherited contracts
 import {Pausable} from "@openzeppelin/utils/Pausable.sol";
 import {Nonces} from "@openzeppelin/utils/Nonces.sol";
+import {Ownable} from "@openzeppelin/access/Ownable.sol";
 import {EIP712} from "@openzeppelin/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/utils/cryptography/ECDSA.sol";
 import {Initializable} from "@openzeppelin/proxy/utils/Initializable.sol";
-
-import {FeeOperator} from "./FeeOperator.sol";
 
 // Libraries
 import {SafeERC20} from "@openzeppelin/token/ERC20/utils/SafeERC20.sol";
 
 /// @author CirculatorLabs
-contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces, Initializable {
+contract Circulator is ICirculator, Pausable, EIP712, Nonces, Initializable, Ownable {
     using SafeERC20 for IERC20;
 
     bytes32 public constant DELEGATE_CIRCULATE_TYPEHASH = keccak256(
@@ -40,6 +39,9 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces, Initi
 
     ///@dev Across SpokePool contract.
     IV3SpokePool public immutable v3SpokePool;
+
+    ///@dev Fee Collector address.
+    address public feeCollector;
 
     ///@dev Fee for delegators. denominated in circleAsset
     uint256 public delegateFee;
@@ -72,11 +74,12 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces, Initi
         address[] memory _delegators,
         uint256 _delegateFee,
         uint256 _serviceFeeBPS
-    ) FeeOperator(_initialOwner, _feeCollector) EIP712("Circulator", "v1") {
+    ) Ownable(_initialOwner) EIP712("Circulator", "v1") {
         circleAsset = _circleAsset;
         tokenMessenger = ITokenMessenger(_tokenMessenger);
         tokenMinter = ITokenMinter(_tokenMinter);
         v3SpokePool = IV3SpokePool(_v3SpokePool);
+        feeCollector = _feeCollector;
 
         IERC20(_circleAsset).safeIncreaseAllowance(_tokenMessenger, type(uint256).max);
         IERC20(_circleAsset).safeIncreaseAllowance(_v3SpokePool, type(uint256).max);
@@ -90,6 +93,15 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces, Initi
         delegateFee = _delegateFee;
         // Service fee in BPS
         serviceFeeBPS = _serviceFeeBPS;
+    }
+
+    /**
+     * @notice Modifier to ensure that only the fee collector can call a function.
+     * @dev Throws an error if the caller is not the fee collector.
+     */
+    modifier onlyFeeCollector() {
+        require(msg.sender == feeCollector, "not fee collector");
+        _;
     }
 
     /**
@@ -350,6 +362,17 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces, Initi
     }
 
     /**
+     * @notice Updates the fee collector address.
+     * @dev Only callable by the contract owner.
+     * @param _feeCollector The new fee collector address to be set.
+     */
+    function setFeeCollector(address _feeCollector) external onlyOwner {
+        if (_feeCollector == address(0)) revert ZeroAddress();
+        feeCollector = _feeCollector;
+        emit FeeCollectorUpdated(_feeCollector);
+    }
+
+    /**
      * @notice Returns the destination domain configurations.
      * @param _destinationDomain The domain ID for which the configurations are fetched.
      * @return _configs The destination domain configurations.
@@ -372,6 +395,16 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces, Initi
      */
     function unpause() external onlyOwner {
         _unpause();
+    }
+
+    /**
+     * @dev Only fee collector can collect fees. This contract should only hold circleAsset, but can also be used to rescue mistakenly sent tokens.
+     * @param _tokens ERC20 token address
+     * @param _to Recipient address
+     */
+    function collectFee(address _tokens, address _to) external onlyFeeCollector {
+        uint256 balance = IERC20(_tokens).balanceOf(address(this));
+        IERC20(_tokens).safeTransfer(_to, balance);
     }
 
     /**

@@ -24,6 +24,9 @@ interface ICirculator {
     /// @dev Revert when the destination configs is invalid.
     error InvalidConfig();
 
+    /// @dev Revert when the address is zero.
+    error ZeroAddress();
+
     // Structs & Enums
     /// @dev Enum for circulate type.
     enum CirculateType {
@@ -130,6 +133,8 @@ interface ICirculator {
     /// @param delegator Address of the delegator.
     /// @param status Enabled as delegator or disabled.
     event DelegatorUpdated(address indexed delegator, bool status);
+
+    event FeeCollectorUpdated(address indexed feeCollector);
 
     /**
      * @notice Circulate a specified amount to destination chain and emits a `Circulate` event.

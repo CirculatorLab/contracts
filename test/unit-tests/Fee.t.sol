@@ -3,7 +3,6 @@ pragma solidity ^0.8.18;
 
 import {UnitTestBase} from "./Base.t.sol";
 import {ICirculator} from "../../src/interfaces/ICirculator.sol";
-import {FeeOperator} from "src/FeeOperator.sol";
 
 contract FeeTest is UnitTestBase {
     function test_ServiceFeeHigherOnChainA() public view {
@@ -47,7 +46,7 @@ contract FeeTest is UnitTestBase {
     function test_RevertWhen_setEmptyFeeCollector() public {
         // Act
         vm.prank(owner);
-        vm.expectRevert(FeeOperator.InvalidFeeCollector.selector);
+        vm.expectRevert(ICirculator.ZeroAddress.selector);
         circulator.setFeeCollector(address(0));
     }
 
