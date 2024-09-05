@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 import {UnitTestBase} from "./Base.t.sol";
-import {FeeOperator} from "src/FeeOperator.sol";
+import {ICirculator} from "../../src/interfaces/ICirculator.sol";
 
 contract FeeTest is UnitTestBase {
     function test_ServiceFeeHigherOnChainA() public view {
@@ -10,7 +10,10 @@ contract FeeTest is UnitTestBase {
         uint256 amount = 10000e6;
 
         // Assert
-        assertGt(circulator.totalFee(amount, chainADomain), circulator.totalFee(amount, chainBDomain));
+        assertGt(
+            circulator.totalFee(amount, chainADomain, ICirculator.CirculateType.Cctp),
+            circulator.totalFee(amount, chainBDomain, ICirculator.CirculateType.Cctp)
+        );
     }
 
     function test_CollectFee() public {
@@ -43,7 +46,7 @@ contract FeeTest is UnitTestBase {
     function test_RevertWhen_setEmptyFeeCollector() public {
         // Act
         vm.prank(owner);
-        vm.expectRevert(FeeOperator.InvalidFeeCollector.selector);
+        vm.expectRevert(ICirculator.ZeroAddress.selector);
         circulator.setFeeCollector(address(0));
     }
 
@@ -80,7 +83,8 @@ contract FeeTest is UnitTestBase {
         circulator.setDestinationRelayerFee(chainADomain, newFee);
 
         // Assert
-        assertEq(circulator.relayerFee(chainADomain), newFee);
+        ICirculator.DestinationCofigs memory chainAConfig = circulator.getDestinationConfigs(chainADomain);
+        assertEq(chainAConfig.relayerFee, newFee);
     }
 
     function test_setMinFee() public {
@@ -92,6 +96,7 @@ contract FeeTest is UnitTestBase {
         circulator.setDestinationMinFee(chainADomain, newFee);
 
         // Assert
-        assertEq(circulator.minFee(chainADomain), newFee);
+        ICirculator.DestinationCofigs memory chainAConfig = circulator.getDestinationConfigs(chainADomain);
+        assertEq(chainAConfig.minFee, newFee);
     }
 }

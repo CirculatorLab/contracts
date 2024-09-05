@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
 
-import {UnitTestBase} from "./Base.t.sol";
+import {UnitTestBase, console2} from "./Base.t.sol";
 import {ICirculator} from "../../src/interfaces/ICirculator.sol";
 import {Pausable} from "@openzeppelin/utils/Pausable.sol";
 
@@ -10,12 +10,15 @@ contract CirculateTest is UnitTestBase {
         // Arrange
         uint256 amount = 1000e6;
         uint256 aliceBalanceBefore = usdc.balanceOf(alice);
-        uint256 expectedFee = circulator.totalFee(amount, chainADomain);
+        uint256 expectedFee = circulator.totalFee(amount, chainADomain, ICirculator.CirculateType.Cctp);
 
         // Act
         vm.startPrank(alice);
         usdc.approve(address(circulator), amount);
-        circulator.circulate(amount, _toBytes32(alice), chainADomain);
+        uint256 fee = circulator.totalFee(amount, chainADomain, ICirculator.CirculateType.Cctp);
+        circulator.circulate(
+            amount, amount - fee, alice, chainADomain, uint32(block.timestamp), ICirculator.CirculateType.Cctp
+        );
         vm.stopPrank();
 
         // Assert
@@ -34,7 +37,9 @@ contract CirculateTest is UnitTestBase {
         vm.startPrank(alice);
         usdc.approve(address(circulator), amount);
         vm.expectRevert(ICirculator.FeeNotCovered.selector);
-        circulator.circulate(amount, _toBytes32(alice), chainADomain);
+        circulator.circulate(
+            amount, amount - 1, alice, chainADomain, uint32(block.timestamp), ICirculator.CirculateType.Cctp
+        );
         vm.stopPrank();
     }
 
@@ -46,8 +51,11 @@ contract CirculateTest is UnitTestBase {
         vm.prank(owner);
         circulator.pause();
 
+        uint256 fee = circulator.totalFee(amount, chainADomain, ICirculator.CirculateType.Cctp);
         vm.expectRevert(Pausable.EnforcedPause.selector);
-        circulator.circulate(amount, _toBytes32(alice), chainADomain);
+        circulator.circulate(
+            amount, amount - fee, alice, chainADomain, uint32(block.timestamp), ICirculator.CirculateType.Cctp
+        );
         vm.stopPrank();
     }
 }

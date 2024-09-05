@@ -35,16 +35,21 @@ contract Deploy is Script, DeployHelper {
             new Circulator(
                 config.usdc,
                 config.tokenMessenger,
-                config.localMinter,
+                config.tokenMinter,
+                config.v3SpokePool,
                 config.initialOwner,
                 config.feeCollector,
                 config.delegators,
                 config.delegateFee,
-                config.serviceFeeBPS,
-                config.domainIds,
-                config.relayerFees,
-                config.baseFees
+                config.serviceFeeBPS
             )
+        );
+
+        console2.log("Circulator deployed at: ", circulator[chainId]);
+
+        // Initialize Circulator
+        Circulator(circulator[chainId]).initDestinationConfigs(
+            config.domainIds, config.relayerFees, config.baseFees, config.chainIds, config.tokens
         );
     }
 

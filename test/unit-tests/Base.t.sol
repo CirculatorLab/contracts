@@ -7,6 +7,7 @@ import "../../src/Circulator.sol";
 import "../mocks/MockPermitERC20.sol";
 import "../mocks/MockTokenMessenger.sol";
 import "../mocks/MockTokenMinter.sol";
+import "../mocks/MockV3SpokePool.sol";
 
 contract UnitTestBase is Test {
     Circulator circulator;
@@ -15,6 +16,7 @@ contract UnitTestBase is Test {
     MockPermitERC20 usdc;
     MockTokenMessenger tokenMessenger;
     MockTokenMinter tokenMinter;
+    MockV3SpokePool v3SpokePool;
 
     // Actors
     uint256 alicePk = uint256(0xaaaa);
@@ -40,12 +42,16 @@ contract UnitTestBase is Test {
     uint32[] domainIds = [chainADomain, chainBDomain];
     uint256[] relayerFees = [uint256(1e6), uint256(0.1e6)];
     uint256[] minFees = [uint256(1e6), uint256(0.1e6)];
+    uint256[] chainIds = [1, 2];
+    address[] tokens = [makeAddr("chainA_USDC"), makeAddr("chainB_USDC")];
 
     function setUp() public {
         usdc = new MockPermitERC20("USDC", "USDC");
+        tokens[0] = address(usdc);
 
         tokenMessenger = new MockTokenMessenger();
         tokenMinter = new MockTokenMinter();
+        v3SpokePool = new MockV3SpokePool();
 
         address[] memory delegators = new address[](1);
         delegators[0] = delegator;
@@ -54,19 +60,24 @@ contract UnitTestBase is Test {
             address(usdc),
             address(tokenMessenger),
             address(tokenMinter),
+            address(v3SpokePool),
             owner,
             feeRecipient,
             delegators,
             delegateFee,
-            serviceFeeBPS,
-            domainIds,
-            relayerFees,
-            minFees
+            serviceFeeBPS
         );
+
+        _setupDestinationConfigs();
 
         _setupMintLimit();
 
         _setBalances();
+    }
+
+    function _setupDestinationConfigs() internal {
+        vm.prank(owner);
+        circulator.initDestinationConfigs(domainIds, relayerFees, minFees, chainIds, tokens);
     }
 
     function _setupMintLimit() internal {

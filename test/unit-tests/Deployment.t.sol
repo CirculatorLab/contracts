@@ -15,14 +15,12 @@ contract DeploymentTest is UnitTestBase {
             address(usdc),
             address(tokenMessenger),
             address(tokenMinter),
+            address(v3SpokePool),
             owner,
             feeRecipient,
             delegators,
             delegateFee,
-            serviceFeeBPS,
-            domainIds,
-            relayerFees,
-            minFees
+            serviceFeeBPS
         );
 
         // assert
