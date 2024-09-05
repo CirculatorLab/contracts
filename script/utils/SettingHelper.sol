@@ -28,7 +28,7 @@ abstract contract SettingHelper {
 
         // BaseSepolia
         config = systemConfigs[84532];
-        config.circulator = 0x005C57acB4Dd229e8B2E1ba1bC7439C93eCBD9F9;
+        config.circulator = 0x538d78c2d84eFa321F68c115A59058eE5f671674;
 
         // PolygonPoSAmoy
         config = systemConfigs[80002];
