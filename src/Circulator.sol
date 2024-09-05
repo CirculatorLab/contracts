@@ -14,6 +14,7 @@ import {Pausable} from "@openzeppelin/utils/Pausable.sol";
 import {Nonces} from "@openzeppelin/utils/Nonces.sol";
 import {EIP712} from "@openzeppelin/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/utils/cryptography/ECDSA.sol";
+import {Initializable} from "@openzeppelin/proxy/utils/Initializable.sol";
 
 import {FeeOperator} from "./FeeOperator.sol";
 
@@ -21,7 +22,7 @@ import {FeeOperator} from "./FeeOperator.sol";
 import {SafeERC20} from "@openzeppelin/token/ERC20/utils/SafeERC20.sol";
 
 /// @author CirculatorLabs
-contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
+contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces, Initializable {
     using SafeERC20 for IERC20;
 
     bytes32 public constant DELEGATE_CIRCULATE_TYPEHASH = keccak256(
@@ -281,7 +282,7 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
         uint256[] memory _minFees,
         uint256[] memory _chainIds,
         address[] memory _tokens
-    ) external onlyOwner {
+    ) external onlyOwner initializer {
         for (uint256 i = 0; i < _domainIds.length; i++) {
             if (_chainIds[i] == 0 || _tokens[i] == address(0)) revert InvalidConfig();
             destinationConfigs[_domainIds[i]] = DestinationCofigs({
