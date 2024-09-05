@@ -7,16 +7,16 @@ import "./MockPermitERC20.sol";
 contract MockV3SpokePool is IV3SpokePool {
     function depositV3(
         address _depositor,
-        address /*_recipient*/,
+        address, /*_recipient*/
         address _inputToken,
-        address /*_outputToken*/,
+        address, /*_outputToken*/
         uint256 _inputAmount,
-        uint256 /*_outputAmount*/,
-        uint256 /*_destinationChainId*/,
-        address /*_exclusiveRelayer*/,
-        uint32 /*_quoteTimestamp*/,
-        uint32 /*_fillDeadline*/,
-        uint32 /*_exclusivityPeriod*/,
+        uint256, /*_outputAmount*/
+        uint256, /*_destinationChainId*/
+        address, /*_exclusiveRelayer*/
+        uint32, /*_quoteTimestamp*/
+        uint32, /*_fillDeadline*/
+        uint32, /*_exclusivityPeriod*/
         bytes calldata /*_message*/
     ) public payable {
         // mimic the transferFrom action for easier testing
