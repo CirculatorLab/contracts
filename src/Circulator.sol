@@ -316,28 +316,6 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
     }
 
     /**
-     * @notice Sets the chain ID for a specific destination domain.
-     * @dev Only callable by the contract owner.
-     * @param _destinationDomain The domain ID for which the chain ID is set.
-     * @param _chainId The new chain ID to be set.
-     */
-    function setDestinationChainId(uint32 _destinationDomain, uint256 _chainId) external onlyOwner {
-        destinationConfigs[_destinationDomain].chainId = _chainId;
-        emit DestinationChainIdUpdated(_destinationDomain, _chainId);
-    }
-
-    /**
-     * @notice Sets the token address for a specific destination domain.
-     * @dev Only callable by the contract owner.
-     * @param _destinationDomain The domain ID for which the token address is set.
-     * @param _token The new token address to be set.
-     */
-    function setDestinationToken(uint32 _destinationDomain, address _token) external onlyOwner {
-        destinationConfigs[_destinationDomain].token = _token;
-        emit DestinationTokenUpdated(_destinationDomain, _token);
-    }
-
-    /**
      * @notice Updates the delegate fee amount.
      * @dev Only callable by the contract owner.
      * @param _newFee The new delegate fee to be set.
