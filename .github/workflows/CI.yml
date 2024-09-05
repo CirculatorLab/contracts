@@ -32,10 +32,10 @@ jobs:
           version: nightly
 
       - name: Run tests
-        run: forge test --gas-report
+        run: forge test --gas-report --via-ir
 
       - name: Run Coverage
-        run: forge coverage --report lcov
+        run: forge coverage --via-ir --report lcov
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3

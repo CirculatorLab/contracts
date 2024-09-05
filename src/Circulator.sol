@@ -206,12 +206,12 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
         uint32 _fillDeadline,
         CirculateType _type
     ) internal returns (uint64 nonce) {
-        uint256 burnAmount = _inputAmount - _fee;
-        if (burnAmount < _outputAmount) revert InsufficientBurnAmount();
+        uint256 inputAmount = _inputAmount - _fee;
+        if (inputAmount < _outputAmount) revert InsufficientInputAmount();
 
         if (_type == CirculateType.Cctp) {
             nonce = tokenMessenger.depositForBurn(
-                burnAmount, _destinationDomain, bytes32(uint256(uint160(_recipient))), circleAsset
+                inputAmount, _destinationDomain, bytes32(uint256(uint160(_recipient))), circleAsset
             );
         } else if (_type == CirculateType.Across) {
             nonce = v3SpokePool.numberOfDeposits();
@@ -220,7 +220,7 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
                 _recipient, // recipient
                 circleAsset, // inputToken
                 destinationConfigs[_destinationDomain].token, // outputToken
-                burnAmount, // inputAmount
+                inputAmount, // inputAmount
                 _outputAmount, // outputAmount
                 destinationConfigs[_destinationDomain].chainId, // destinationChainId
                 address(0), // exclusiveRelayer
@@ -232,7 +232,7 @@ contract Circulator is ICirculator, FeeOperator, Pausable, EIP712, Nonces {
         }
 
         // Emit an event
-        emit Circulate(_sender, _recipient, _destinationDomain, burnAmount, _fee, nonce, msg.sender, _type);
+        emit Circulate(_sender, _recipient, _destinationDomain, inputAmount, _fee, nonce, msg.sender, _type);
     }
 
     /**

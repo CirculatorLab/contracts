@@ -7,7 +7,7 @@ interface ICirculator {
     error FeeNotCovered();
 
     /// @dev Revert when burn amount is less than output amount.
-    error InsufficientBurnAmount();
+    error InsufficientInputAmount();
 
     /// @dev Revert when burn amount exceeds limit set by Circle TokenMinter.
     error BurnAmountExceedsLimit();
