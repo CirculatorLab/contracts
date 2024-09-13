@@ -12,19 +12,19 @@ abstract contract SettingHelper {
     constructor() {
         // Ethereum Sepolia
         SystemConfig storage config = systemConfigs[11155111];
-        config.circulator = 0x4A62C58c9c788d31A9426e6878d017a68328A052;
+        config.circulator = 0x04b74013b1a0CBc8fbDBc443b089e6F426C71B99;
 
         // AvalancheFuji
         config = systemConfigs[43113];
-        config.circulator = 0x86C64D50c68e00a2AF9BE51a3EBD009995403eBd;
+        config.circulator = 0x0Ad523F62f9BC5748118f25647618092610b6760;
 
         // OPSepolia
         config = systemConfigs[11155420];
-        config.circulator = 0x75D6C315040482f0Ad4838f9B11A2F7B6a19afC1;
+        config.circulator = 0xbFFDC2a29ccB1D893939AB4132553F9Fe998b546;
 
         // Arbitrum Sepolia
         config = systemConfigs[421614];
-        config.circulator = 0x86C64D50c68e00a2AF9BE51a3EBD009995403eBd;
+        config.circulator = 0x52351dF87889693EB5ACA0e64bf223D263dE9c24;
 
         // BaseSepolia
         config = systemConfigs[84532];
@@ -32,7 +32,7 @@ abstract contract SettingHelper {
 
         // PolygonPoSAmoy
         config = systemConfigs[80002];
-        config.circulator = 0x4A62C58c9c788d31A9426e6878d017a68328A052;
+        config.circulator = 0x52351dF87889693EB5ACA0e64bf223D263dE9c24;
     }
 
     function getConfig(uint256 chainId) public view returns (SystemConfig memory) {
