@@ -4,7 +4,7 @@ pragma solidity ^0.8.18;
 import {UnitTestBase} from "./Base.t.sol";
 import {ICirculator} from "../../src/interfaces/ICirculator.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Initializable} from "@openzeppelin/proxy/utils/Initializable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {Circulator} from "../../src/Circulator.sol";
 
 contract InitDestinationConfigTest is UnitTestBase {

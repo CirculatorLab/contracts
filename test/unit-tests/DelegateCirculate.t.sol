@@ -6,7 +6,7 @@ import {DelegateParams} from "../utils/Types.sol";
 import {ICirculator} from "../../src/interfaces/ICirculator.sol";
 
 import {MessageHashUtils} from "openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol";
-import {Pausable} from "@openzeppelin/utils/Pausable.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 
 contract DelegateCirculateTest is UnitTestBase {
     // common variables

@@ -3,6 +3,7 @@ pragma solidity ^0.8.23;
 
 import {Script, console2} from "forge-std/Script.sol";
 import "../src/Circulator.sol";
+import "../src/CirculatorProxy.sol";
 import "./utils/DeployHelper.sol";
 
 contract Deploy is Script, DeployHelper {
@@ -31,17 +32,20 @@ contract Deploy is Script, DeployHelper {
 
         DeployConfig memory config = getConfig(chainId, msg.sender, msg.sender, delegators);
 
+        address implementation =
+            address(new Circulator(config.usdc, config.tokenMessenger, config.tokenMinter, config.v3SpokePool));
+
         circulator[chainId] = address(
-            new Circulator(
-                config.usdc,
-                config.tokenMessenger,
-                config.tokenMinter,
-                config.v3SpokePool,
-                config.initialOwner,
-                config.feeCollector,
-                config.delegators,
-                config.delegateFee,
-                config.serviceFeeBPS
+            new CirculatorProxy(
+                implementation,
+                abi.encodeWithSelector(
+                    Circulator.initialize.selector,
+                    config.initialOwner,
+                    config.feeCollector,
+                    config.delegateFee,
+                    config.relayerFees,
+                    config.delegators
+                )
             )
         );
 

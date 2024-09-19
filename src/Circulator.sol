@@ -2,26 +2,33 @@
 pragma solidity 0.8.25;
 
 // Interfaces
-import {IERC20Permit} from "@openzeppelin/token/ERC20/extensions/IERC20Permit.sol";
-import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
+import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ITokenMessenger} from "./interfaces/ITokenMessenger.sol";
 import {ITokenMinter} from "./interfaces/ITokenMinter.sol";
 import {IV3SpokePool} from "./interfaces/IV3SpokePool.sol";
 import {ICirculator} from "./interfaces/ICirculator.sol";
 
 // Inherited contracts
-import {Pausable} from "@openzeppelin/utils/Pausable.sol";
-import {Nonces} from "@openzeppelin/utils/Nonces.sol";
-import {Ownable} from "@openzeppelin/access/Ownable.sol";
-import {EIP712} from "@openzeppelin/utils/cryptography/EIP712.sol";
-import {ECDSA} from "@openzeppelin/utils/cryptography/ECDSA.sol";
-import {Initializable} from "@openzeppelin/proxy/utils/Initializable.sol";
+import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 // Libraries
-import {SafeERC20} from "@openzeppelin/token/ERC20/utils/SafeERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @author CirculatorLabs
-contract Circulator is ICirculator, Pausable, EIP712, Nonces, Initializable, Ownable {
+contract Circulator is
+    ICirculator,
+    Nonces,
+    PausableUpgradeable,
+    OwnableUpgradeable,
+    EIP712Upgradeable,
+    UUPSUpgradeable
+{
     using SafeERC20 for IERC20;
 
     bytes32 public constant DELEGATE_CIRCULATE_TYPEHASH = keccak256(
@@ -59,30 +66,32 @@ contract Circulator is ICirculator, Pausable, EIP712, Nonces, Initializable, Own
      * @param _tokenMessenger Address of the tokenMessenger contract.
      * @param _tokenMinter Address of the tokenMinter contract.
      * @param _v3SpokePool Address of the v3SpokePool contract.
-     * @param _feeCollector Address of the fee collector.
-     * @param _delegators List of initial delegator addresses to be set.
-     * @param _delegateFee Fixed fee for the source chain.
-     * @param _serviceFeeBPS Percentage of the service fee (for the source chain).
      */
-    constructor(
-        address _circleAsset,
-        address _tokenMessenger,
-        address _tokenMinter,
-        address _v3SpokePool,
-        address _initialOwner,
-        address _feeCollector,
-        address[] memory _delegators,
-        uint256 _delegateFee,
-        uint256 _serviceFeeBPS
-    ) Ownable(_initialOwner) EIP712("Circulator", "v1") {
+    constructor(address _circleAsset, address _tokenMessenger, address _tokenMinter, address _v3SpokePool) {
         circleAsset = _circleAsset;
         tokenMessenger = ITokenMessenger(_tokenMessenger);
         tokenMinter = ITokenMinter(_tokenMinter);
         v3SpokePool = IV3SpokePool(_v3SpokePool);
+    }
+
+    function initialize(
+        address _initialOwner,
+        address _feeCollector,
+        uint256 _delegateFee,
+        uint256 _serviceFeeBPS,
+        address[] memory _delegators
+    ) public initializer {
+        __Ownable_init_unchained();
+        _transferOwnership(_initialOwner);
+
+        __Pausable_init();
+        __EIP712_init_unchained("Circulator", "v1");
+        __UUPSUpgradeable_init();
+
         feeCollector = _feeCollector;
 
-        IERC20(_circleAsset).safeIncreaseAllowance(_tokenMessenger, type(uint256).max);
-        IERC20(_circleAsset).safeIncreaseAllowance(_v3SpokePool, type(uint256).max);
+        IERC20(circleAsset).safeIncreaseAllowance(address(tokenMessenger), type(uint256).max);
+        IERC20(circleAsset).safeIncreaseAllowance(address(v3SpokePool), type(uint256).max);
 
         // Set approved delegators
         for (uint256 i = 0; i < _delegators.length; i++) {
@@ -94,6 +103,8 @@ contract Circulator is ICirculator, Pausable, EIP712, Nonces, Initializable, Own
         // Service fee in BPS
         serviceFeeBPS = _serviceFeeBPS;
     }
+
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 
     /**
      * @notice Modifier to ensure that only the fee collector can call a function.
@@ -294,7 +305,7 @@ contract Circulator is ICirculator, Pausable, EIP712, Nonces, Initializable, Own
         uint256[] memory _minFees,
         uint256[] memory _chainIds,
         address[] memory _tokens
-    ) external onlyOwner initializer {
+    ) external onlyOwner {
         for (uint256 i = 0; i < _domainIds.length; i++) {
             if (_chainIds[i] == 0 || _tokens[i] == address(0)) revert InvalidConfig();
             destinationConfigs[_domainIds[i]] = DestinationCofigs({

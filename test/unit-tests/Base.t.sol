@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
 
-import "@openzeppelin/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "forge-std/Test.sol";
 import "../../src/Circulator.sol";
+import "../../src/CirculatorProxy.sol";
 import "../mocks/MockPermitERC20.sol";
 import "../mocks/MockTokenMessenger.sol";
 import "../mocks/MockTokenMinter.sol";
@@ -56,16 +57,20 @@ contract UnitTestBase is Test {
         address[] memory delegators = new address[](1);
         delegators[0] = delegator;
 
-        circulator = new Circulator(
-            address(usdc),
-            address(tokenMessenger),
-            address(tokenMinter),
-            address(v3SpokePool),
-            owner,
-            feeRecipient,
-            delegators,
-            delegateFee,
-            serviceFeeBPS
+        // create implementation
+        address implementation =
+            address(new Circulator(address(usdc), address(tokenMessenger), address(tokenMinter), address(v3SpokePool)));
+
+        // create proxy
+        circulator = Circulator(
+            address(
+                new CirculatorProxy(
+                    implementation,
+                    abi.encodeWithSelector(
+                        Circulator.initialize.selector, owner, feeRecipient, delegateFee, serviceFeeBPS, delegators
+                    )
+                )
+            )
         );
 
         _setupDestinationConfigs();
