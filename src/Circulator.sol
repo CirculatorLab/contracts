@@ -82,7 +82,7 @@ contract Circulator is
         address[] memory _delegators
     ) public initializer {
         __Ownable_init(_initialOwner);
-        
+
         __Pausable_init();
         __EIP712_init_unchained("Circulator", "v1");
         __UUPSUpgradeable_init();
