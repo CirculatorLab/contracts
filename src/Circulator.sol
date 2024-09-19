@@ -14,7 +14,7 @@ import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 // Libraries
@@ -81,9 +81,8 @@ contract Circulator is
         uint256 _serviceFeeBPS,
         address[] memory _delegators
     ) public initializer {
-        __Ownable_init_unchained();
-        _transferOwnership(_initialOwner);
-
+        __Ownable_init(_initialOwner);
+        
         __Pausable_init();
         __EIP712_init_unchained("Circulator", "v1");
         __UUPSUpgradeable_init();
