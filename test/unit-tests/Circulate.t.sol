@@ -3,7 +3,7 @@ pragma solidity ^0.8.18;
 
 import {UnitTestBase, console2} from "./Base.t.sol";
 import {ICirculator} from "../../src/interfaces/ICirculator.sol";
-import {Pausable} from "@openzeppelin/utils/Pausable.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 
 contract CirculateTest is UnitTestBase {
     function test_Circulate() public {
